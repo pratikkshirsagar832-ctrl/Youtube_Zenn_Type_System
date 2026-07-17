@@ -34,6 +34,9 @@ corpus/
 # User music library (personal royalty-free tracks — not part of repo)
 music_library/
 
+# Models (Piper TTS onnx files — download separately)
+models/
+
 # Environment & credentials
 .env
 .env.local

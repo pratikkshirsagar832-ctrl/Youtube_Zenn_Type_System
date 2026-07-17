@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nexus — AI Video Generator</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+  body {
+    font-family: 'Inter', sans-serif;
+    background: #08080D;
+    color: #FFFFFF;
+    overflow: hidden;
+    height: 100vh;
+    width: 100vw;
+  }
+
+  #bg-canvas {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    z-index: 0;
+  }
+
+  #ui {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    padding: 2rem;
+  }
+
+  .card {
+    background: rgba(10, 10, 15, 0.85);
+    border: 1px solid #2A2A35;
+    border-radius: 16px;
+    padding: 2.5rem;
+    width: 100%;
+    max-width: 720px;
+    backdrop-filter: blur(12px);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+  }
+
+  .logo {
+    text-align: center;
+    margin-bottom: 2rem;
+  }
+
+  .logo h1 {
+    font-size: 1.8rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+
+  .logo h1 span { color: #F4D03F; }
+
+  .logo p {
+    color: #AAAAAA;
+    font-size: 0.85rem;
+    margin-top: 0.3rem;
+    font-weight: 300;
+  }
+
+  textarea {
+    width: 100%;
+    min-height: 240px;
+    background: #14141C;
+    border: 1px solid #2A2A35;
+    border-radius: 10px;
+    color: #FFFFFF;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.9rem;
+    line-height: 1.6;
+    padding: 1.2rem;
+    resize: vertical;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  textarea:focus { border-color: #F4D03F; }
+  textarea::placeholder { color: #555; }
+
+  .submit-btn {
+    width: 100%;
+    padding: 1rem;
+    margin-top: 1.2rem;
+    background: #F4D03F;
+    color: #08080D;
+    border: none;
+    border-radius: 10px;
+    font-family: 'Inter', sans-serif;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    letter-spacing: 0.01em;
+  }
+
+  .submit-btn:hover { background: #E5C234; transform: translateY(-1px); }
+  .submit-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+  .submit-btn.loading { pointer-events: none; opacity: 0.7; }
+
+  #progress-area {
+    display: none;
+    margin-top: 1.5rem;
+  }
+
+  #progress-area.visible { display: block; }
+
+  .progress-step {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    padding: 0.5rem 0;
+    color: #AAAAAA;
+    font-size: 0.85rem;
+  }
+
+  .progress-step .dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: #2A2A35;
+    flex-shrink: 0;
+    transition: background 0.3s;
+  }
+
+  .progress-step.active .dot { background: #F4D03F; box-shadow: 0 0 8px #F4D03F; }
+  .progress-step.done  .dot { background: #22C55E; }
+  .progress-step.done  { color: #22C55E; }
+  .progress-step.active { color: #F4D03F; }
+
+  .progress-bar-track {
+    width: 100%;
+    height: 4px;
+    background: #2A2A35;
+    border-radius: 2px;
+    margin-top: 1rem;
+    overflow: hidden;
+  }
+
+  .progress-bar-fill {
+    height: 100%;
+    background: #F4D03F;
+    width: 0%;
+    border-radius: 2px;
+    transition: width 0.5s ease;
+  }
+
+  #download-area {
+    display: none;
+    margin-top: 1.5rem;
+    text-align: center;
+  }
+
+  #download-area.visible { display: block; }
+
+  .download-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.8rem 2rem;
+    background: #22C55E;
+    color: #08080D;
+    border: none;
+    border-radius: 10px;
+    font-family: 'Inter', sans-serif;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: none;
+    transition: all 0.2s;
+  }
+
+  .download-btn:hover { background: #16A34A; transform: translateY(-1px); }
+
+  #error-area {
+    display: none;
+    margin-top: 1rem;
+    padding: 0.8rem 1rem;
+    background: rgba(239, 68, 68, 0.15);
+    border: 1px solid #EF4444;
+    border-radius: 8px;
+    color: #EF4444;
+    font-size: 0.85rem;
+  }
+
+  #error-area.visible { display: block; }
+</style>
+</head>
+<body>
+
+<canvas id="bg-canvas"></canvas>
+
+<div id="ui">
+  <div class="card">
+    <div class="logo">
+      <h1>NEXUS <span>MIND</span></h1>
+      <p>AI Video Production Studio</p>
+    </div>
+
+    <textarea id="script-input" placeholder="Paste your full script here...
+
+The system will enhance it with DeepSeek, generate voiceover with Piper TTS, create images, and compose a professional video with Remotion."></textarea>
+
+    <button class="submit-btn" id="submit-btn" onclick="startGeneration()">GENERATE VIDEO</button>
+
+    <div id="progress-area">
+      <div id="progress-steps"></div>
+      <div class="progress-bar-track">
+        <div class="progress-bar-fill" id="progress-fill"></div>
+      </div>
+    </div>
+
+    <div id="download-area">
+      <a class="download-btn" id="download-link" href="#" download>DOWNLOAD MP4</a>
+    </div>
+
+    <div id="error-area"></div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+// ============================
+// Three.js Particle Background
+// ============================
+const canvas = document.getElementById('bg-canvas');
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+const particleCount = 1800;
+const geometry = new THREE.BufferGeometry();
+const positions = new Float32Array(particleCount * 3);
+const colors = new Float32Array(particleCount * 3);
+
+for (let i = 0; i < particleCount; i++) {
+  const i3 = i * 3;
+  positions[i3] = (Math.random() - 0.5) * 30;
+  positions[i3 + 1] = (Math.random() - 0.5) * 20;
+  positions[i3 + 2] = (Math.random() - 0.5) * 20 - 5;
+  const c = 0.08 + Math.random() * 0.15;
+  colors[i3] = 0;
+  colors[i3 + 1] = 0;
+  colors[i3 + 2] = 0;
+}
+
+geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+const material = new THREE.PointsMaterial({
+  size: 0.03,
+  vertexColors: true,
+  transparent: true,
+  opacity: 0.6,
+  sizeAttenuation: true,
+});
+
+const particles = new THREE.Points(geometry, material);
+scene.add(particles);
+
+camera.position.z = 5;
+
+let mouseX = 0, mouseY = 0;
+document.addEventListener('mousemove', (e) => {
+  mouseX = (e.clientX / window.innerWidth) * 2 - 1;
+  mouseY = -(e.clientY / window.innerHeight) * 2 + 1;
+});
+
+function animate() {
+  requestAnimationFrame(animate);
+  particles.rotation.x += 0.0003;
+  particles.rotation.y += 0.0005;
+  particles.rotation.x += mouseY * 0.0002;
+  particles.rotation.y += mouseX * 0.0002;
+  renderer.render(scene, camera);
+}
+animate();
+
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+// ============================
+// Pipeline Logic
+// ============================
+const STEPS = [
+  { id: 'queued',          label: 'Queued' },
+  { id: 'stage_0_enhance', label: 'Enhancing script (DeepSeek V3)' },
+  { id: 'stage_1_tts',     label: 'Generating voiceover (Piper TTS)' },
+  { id: 'stage_2_whisper', label: 'Extracting word timestamps (Whisper)' },
+  { id: 'stage_3_align',   label: 'Aligning words to scenes' },
+  { id: 'stage_4_images',  label: 'Generating stickman images' },
+  { id: 'stage_5_render',  label: 'Rendering video (Remotion)' },
+  { id: 'complete',        label: 'Complete!' },
+];
+
+let pollInterval = null;
+
+function renderSteps(currentStageId) {
+  const container = document.getElementById('progress-steps');
+  container.innerHTML = '';
+  let currentFound = false;
+  for (const s of STEPS) {
+    const div = document.createElement('div');
+    div.className = 'progress-step';
+    if (s.id === currentStageId) {
+      div.classList.add('active');
+      currentFound = true;
+    } else if (currentFound) {
+      // after current
+    } else {
+      div.classList.add('done');
+    }
+    div.innerHTML = `<span class="dot"></span>${s.label}`;
+    container.appendChild(div);
+  }
+}
+
+function startGeneration() {
+  const script = document.getElementById('script-input').value.trim();
+  if (!script) {
+    showError('Please paste your script first.');
+    return;
+  }
+
+  const btn = document.getElementById('submit-btn');
+  btn.disabled = true;
+  btn.textContent = 'PROCESSING...';
+  btn.classList.add('loading');
+  hideError();
+
+  document.getElementById('progress-area').classList.add('visible');
+  document.getElementById('download-area').classList.remove('visible');
+  renderSteps('queued');
+  document.getElementById('progress-fill').style.width = '0%';
+
+  fetch('/api/generate', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ input: script, force_mode: 'script', duration_minutes: 8 }),
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.project_id) {
+      startPolling(data.project_id);
+    } else {
+      throw new Error(data.detail || 'Failed to start generation');
+    }
+  })
+  .catch(err => {
+    showError(err.message);
+    btn.disabled = false;
+    btn.textContent = 'GENERATE VIDEO';
+    btn.classList.remove('loading');
+  });
+}
+
+function startPolling(projectId) {
+  if (pollInterval) clearInterval(pollInterval);
+
+  pollInterval = setInterval(() => {
+    fetch(`/api/status/${projectId}`)
+      .then(r => r.json())
+      .then(status => {
+        const stage = status.current_stage || 'queued';
+        const progress = status.progress || 0;
+
+        renderSteps(stage);
+        document.getElementById('progress-fill').style.width = `${Math.round(progress * 100)}%`;
+
+        if (status.status === 'ready') {
+          clearInterval(pollInterval);
+          pollInterval = null;
+          const btn = document.getElementById('submit-btn');
+          btn.disabled = false;
+          btn.textContent = 'GENERATE VIDEO';
+          btn.classList.remove('loading');
+
+          const link = document.getElementById('download-link');
+          link.href = `/api/download/${projectId}`;
+          link.onclick = (e) => {
+            e.preventDefault();
+            fetch(link.href)
+              .then(r => r.blob())
+              .then(blob => {
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'nexus_video.mp4';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+              })
+              .catch(() => { window.location.href = link.href; });
+          };
+          document.getElementById('download-area').classList.add('visible');
+        }
+
+        if (status.status === 'failed') {
+          clearInterval(pollInterval);
+          pollInterval = null;
+          showError(status.error || 'Pipeline failed');
+          const btn = document.getElementById('submit-btn');
+          btn.disabled = false;
+          btn.textContent = 'GENERATE VIDEO';
+          btn.classList.remove('loading');
+        }
+      })
+      .catch(err => {
+        // keep polling on network error
+      });
+  }, 2000);
+}
+
+function showError(msg) {
+  const el = document.getElementById('error-area');
+  el.textContent = msg;
+  el.classList.add('visible');
+}
+
+function hideError() {
+  document.getElementById('error-area').classList.remove('visible');
+}
+</script>
+</body>
+</html>

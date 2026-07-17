@@ -1,7 +1,30 @@
-# OpenMontage - Core Dependencies
+# NEXUS — Autonomous YouTube Video Factory
+# Minimal dependencies. Everything local or free.
+
+# Core
 pyyaml>=6.0
-pydantic>=2.0
-jsonschema>=4.20
 python-dotenv>=1.0
-Pillow>=10.0
 requests>=2.31
+httpx>=0.27
+Pillow>=10.0
+
+# Web server
+fastapi>=0.109
+uvicorn>=0.27
+python-multipart>=0.0.9
+
+# LLM (DeepSeek via OpenAI-compatible client)
+openai>=1.40.0
+
+# Voiceover (local)
+piper-tts>=1.2.0
+pydub>=0.25.1
+
+# Word timestamps (Groq Whisper API — no local model)
+# Uses openai SDK (already required above) — no extra deps needed.
+
+# Schema validation
+pydantic>=2.6.0
+
+# Database (optional, for v2 self-improving loop)
+supabase>=2.0
