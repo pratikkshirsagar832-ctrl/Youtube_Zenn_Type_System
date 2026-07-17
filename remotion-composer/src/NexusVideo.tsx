@@ -1,15 +1,13 @@
 import React from "react";
 import { AbsoluteFill, Audio, Sequence, staticFile, useVideoConfig } from "remotion";
 import { DynamicImage, MotionType } from "./DynamicImage";
-import { PsycheCharacter, PsycheExpression, PsychePosition } from "./PsycheCharacter";
 import { SubtitleLayer, SubtitleWord } from "./SubtitleLayer";
 
 // ---------------------------------------------------------------------------
 // NexusVideo — main composition for the Nexus pipeline.
-// 3 layers per scene:
+// 2 layers per scene:
 //   1. DynamicImage (Ken Burns background)
-//   2. PsycheCharacter (SVG character)
-//   3. SubtitleLayer (word-by-word gold captions)
+//   2. SubtitleLayer (word-by-word gold captions)
 // + audio (voiceover at full volume, music at 25% if present).
 // ---------------------------------------------------------------------------
 
@@ -19,8 +17,6 @@ export interface NexusScene {
   image_path: string;
   image_prompt?: string;
   motion_type: MotionType;
-  character_expression: PsycheExpression;
-  character_position: PsychePosition;
   background_color_hex: string;
   subtitle_keyword?: string;
   voiceover_text?: string;
@@ -52,10 +48,6 @@ const NexusSceneBlock: React.FC<{
           motionType={scene.motion_type}
           durationInFrames={durationInFrames}
           backgroundColor={scene.background_color_hex}
-        />
-        <PsycheCharacter
-          expression={scene.character_expression}
-          position={scene.character_position}
         />
         <SubtitleLayer words={scene.subtitle_words} />
       </AbsoluteFill>

@@ -1,10 +1,9 @@
-"""Pollinations Flux image generation.
+"""Pollinations z-image-turbo image generation.
 
-Primary:  gen.pollinations.ai/image/{prompt}  (authenticated, model=flux)
+Primary:  gen.pollinations.ai/image/{prompt}  (authenticated, model=z-image-turbo)
 Fallback: Pexels stock photo
 
 API key:  POLLINATIONS_API_KEY in .env (sk_...)
-Cost:     ~0.00175 pollen per 1024x1024 Flux Schnell image (~$0.00175)
 """
 import os
 import time
@@ -17,7 +16,7 @@ import httpx
 from config import POLLINATIONS_BASE_URL
 
 
-DEFAULT_MODEL = "flux"
+DEFAULT_MODEL = "z-image-turbo"
 DEFAULT_WIDTH = 1280
 DEFAULT_HEIGHT = 720
 MAX_RETRIES = 3
