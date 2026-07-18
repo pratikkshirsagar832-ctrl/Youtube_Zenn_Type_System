@@ -5,7 +5,7 @@ Key behaviors:
 - Every word maps to exactly one scene (no gaps)
 - Scene duration = last word end - first word start
 - Last scene extended to cover full audio duration
-- Builds edit_decisions.json for Remotion
+- Builds edit_decisions.json for Remotion (no image_map needed — all SVG)
 """
 
 from __future__ import annotations
@@ -16,10 +16,6 @@ from pathlib import Path
 from config import (
     PIPELINE_MIN_SHOT_DURATION_S,
     PIPELINE_MAX_SHOT_DURATION_S,
-    MotionType,
-    CharacterExpression,
-    CharacterPosition,
-    BACKGROUND_COLORS,
 )
 
 
@@ -90,10 +86,15 @@ def build_aligned_scenes(scene_plan: dict, word_timestamps: dict,
             "duration_seconds": round(duration, 3),
             "transcribed_text": transcribed_text,
             "voiceover_text": scene.get("voiceover_text", ""),
-            "motion_type": scene.get("motion_type", MotionType.ZOOM_IN_SLOW),
-            "character_expression": scene.get("character_expression", CharacterExpression.DEFAULT),
-            "character_position": scene.get("character_position", CharacterPosition.CENTER),
-            "background_color_hex": scene.get("background_color_hex", BACKGROUND_COLORS[0]),
+            "scene_type": scene.get("scene_type", "character_solo"),
+            "character_expression": scene.get("character_expression", "neutral"),
+            "character_position": scene.get("character_position", "center"),
+            "character_animation": scene.get("character_animation", "idle"),
+            "background": scene.get("background", {"bg_color": "#FFFFFF", "elements": []}),
+            "props": scene.get("props", []),
+            "prop_position": scene.get("prop_position", "right_of_character"),
+            "num_characters": scene.get("num_characters", 1),
+            "motion_type": scene.get("motion_type", "zoom_in_slow"),
             "subtitle_keyword": keyword,
             "subtitle_words": subtitle_words,
         })
@@ -101,45 +102,28 @@ def build_aligned_scenes(scene_plan: dict, word_timestamps: dict,
     return aligned
 
 
-def build_edit_decisions(aligned_scenes: list[dict], image_map: dict,
+def build_edit_decisions(aligned_scenes: list[dict],
                          voiceover_path: str, total_audio_duration: float) -> dict:
-    """Build final edit_decisions.json for Remotion from aligned scenes + images."""
+    """Build final edit_decisions.json for Remotion from aligned scenes.
+    No image_map needed — all visuals are SVG rendered by Remotion."""
     out_scenes = []
     current_time = 0.0
-    used_motions = []
+    used_motions: list[str] = []
 
-    for i, s in enumerate(aligned_scenes):
-        scene_id = i + 1
-
-        # Image path from generated images
-        img_path = image_map.get(scene_id, "")
-
-        # Motion: cycle to avoid consecutive same
-        motion = s.get("motion_type", MotionType.ZOOM_IN_SLOW)
-        if motion not in MotionType.ALL:
-            motion = MotionType.ZOOM_IN_SLOW
-        if used_motions and motion == used_motions[-1]:
-            # Pick next available
-            idx = MotionType.ALL.index(motion) if motion in MotionType.ALL else 0
-            motion = MotionType.ALL[(idx + 1) % len(MotionType.ALL)]
-        used_motions.append(motion)
-
-        expr = s.get("character_expression", CharacterExpression.DEFAULT)
-        if expr not in CharacterExpression.ALL:
-            expr = CharacterExpression.DEFAULT
-
-        pos = s.get("character_position", CharacterPosition.CENTER)
-        if pos not in CharacterPosition.ALL:
-            pos = CharacterPosition.CENTER
-
-        color = s.get("background_color_hex", BACKGROUND_COLORS[0])
-        if color not in BACKGROUND_COLORS:
-            color = BACKGROUND_COLORS[0]
-
+    for s in aligned_scenes:
         duration = s["duration_seconds"]
 
+        # Motion: cycle to avoid consecutive same
+        motion = s.get("motion_type", "zoom_in_slow")
+        if used_motions and motion == used_motions[-1]:
+            idx = 0
+            alt = ["zoom_in_slow", "pan_left", "pan_right", "static"]
+            if motion in alt:
+                idx = (alt.index(motion) + 1) % len(alt)
+                motion = alt[idx]
+        used_motions.append(motion)
+
         # Adjust word timestamps to be relative to scene start_time
-        # (SubtitleLayer uses sequence-relative useCurrentFrame(), needs relative timestamps)
         raw_words = s.get("subtitle_words", [])
         adjusted_words = []
         for w in raw_words:
@@ -151,22 +135,25 @@ def build_edit_decisions(aligned_scenes: list[dict], image_map: dict,
             })
 
         out_scenes.append({
-            "scene_id": scene_id,
+            "scene_id": s["scene_id"],
             "start_time": round(current_time, 3),
             "duration_seconds": round(duration, 3),
             "end_time": round(current_time + duration, 3),
-            "image_path": f"images/scene_{scene_id:03d}.jpg",
+            "scene_type": s.get("scene_type", "character_solo"),
+            "character_expression": s.get("character_expression", "neutral"),
+            "character_position": s.get("character_position", "center"),
+            "character_animation": s.get("character_animation", "idle"),
+            "background": s.get("background", {"bg_color": "#FFFFFF", "elements": []}),
+            "props": s.get("props", []),
+            "prop_position": s.get("prop_position", "right_of_character"),
+            "num_characters": s.get("num_characters", 1),
             "motion_type": motion,
-            "character_expression": expr,
-            "character_position": pos,
-            "background_color_hex": color,
             "subtitle_keyword": s.get("subtitle_keyword", ""),
             "voiceover_text": s.get("transcribed_text", ""),
             "subtitle_words": adjusted_words,
         })
         current_time += duration
 
-    # Extend last scene to cover full audio duration
     total = max(round(current_time, 3), round(total_audio_duration, 3))
     if out_scenes and total > current_time:
         gap = round(total - current_time, 3)

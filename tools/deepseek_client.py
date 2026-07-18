@@ -109,27 +109,84 @@ The JSON must have EXACTLY these keys:
     {{
       "scene_id": 1,
       "voiceover_text": "<exact 1-3 sentence chunk from a section>",
-      "image_prompt": "<60-100 word Flux prompt: subject, setting, lighting, mood, style>",
-      "motion_type": "<zoom_in_slow|zoom_out_fast|pan_left|pan_right|fade_in|static>",
-      "character_expression": "<default|shocked|thinking|explaining|scared|concerned|knowing>",
-      "character_position": "<center|left|right>",
-      "background_color_hex": "<#0A0A0F|#1A1A24|#14141C|#08080D>",
+      "scene_type": "<character_solo|character_with_prop|character_in_room|character_explaining|timeline_scene|text_focus|two_characters>",
+      "character_expression": "<neutral|curious|shocked|thinking|sad|confident|scared>",
+      "character_position": "<left|center|right>",
+      "character_animation": "<idle|walk_in_left|walk_in_right|walk_out_left|point_up>",
+      "background": {
+        "bg_color": "<hex color like #F5ECD7 or #E8D5B7>",
+        "elements": [
+          {
+            "type": "<rect|circle|text|line|path|polygon|timeline_bar|ground>",
+            // Position in percent (0-100) of 1920x1080 canvas
+            "x_percent": <number or null>,
+            "y_percent": <number or null>,
+            "width_percent": <number or null>,
+            "height_percent": <number or null>,
+            "cx_percent": <number or null>,
+            "cy_percent": <number or null>,
+            "r_percent": <number or null>,
+            "x1_percent": <number or null>,
+            "y1_percent": <number or null>,
+            "x2_percent": <number or null>,
+            "y2_percent": <number or null>,
+            "fill": "<hex color or null>",
+            "stroke": "<hex color or null>",
+            "stroke_width": <number or null>,
+            "content": "<text string for text type>",
+            "font_size": <number or null>,
+            "text_anchor": "<start|middle|end>",
+            "fill_percent": <0-100 for timeline_bar>,
+            "fill_color": "<hex>",
+            "remaining_color": "<hex>",
+            "year_label": "<string>",
+            "ground_color": "<hex>",
+            "border_radius": <number or null>
+          }
+        ]
+      },
+      "props": [],
+      "prop_position": "right_of_character",
+      "num_characters": 1,
+      "motion_type": "<zoom_in_slow|pan_left|pan_right|static>",
       "subtitle_keyword": "<single most emotionally weighted word>"
     }}
   ]
 }
 
+BACKGROUND ELEMENT TYPES (all positions as x_percent/y_percent 0-100):
+- "rect": x_percent, y_percent, width_percent, height_percent, fill, stroke, stroke_width, border_radius. Use for walls, windows, signs, panels, doors, frames.
+- "circle": cx_percent, cy_percent, r_percent, fill, stroke, stroke_width. Use for sun, decorative dots, spotlight.
+- "text": x_percent, y_percent, content (the text), font_size (48-72), text_anchor (start/middle/end). Renders in Patrick Hand font. Use for year labels, signs, chalkboard text, titles, thought bubbles.
+- "line": x1_percent, y1_percent, x2_percent, y2_percent, stroke, stroke_width. Use for horizon line, floor line, shelf, tabletop, cross-out.
+- "path": d (SVG path string), fill, stroke, stroke_width. Use for complex shapes, mountains, waves, abstract curves.
+- "polygon": points (array of {x_percent, y_percent}), fill, stroke, stroke_width. Use for triangles, diamonds, arrows, abstract shapes.
+- "timeline_bar": A horizontal progress bar. fill_percent (0-100), fill_color, remaining_color, year_label. Use for historical timelines and progress indicators.
+- "ground": y_percent (where ground starts), ground_color. Draws a filled rectangle from y_percent to bottom of screen. Always rendered BELOW other elements.
+
+DESIGN RULES:
+1. All positions use percentages (0-100). x_percent=50, y_percent=50 = center of 1920x1080 canvas.
+2. bg_color sets the overall page/wall color. Elements layer on top.
+3. Use at most 2-3 element types per scene. Keep it simple and legible.
+4. For character_solo scenes: use bg_color only, or bg_color + a single line for floor.
+5. For character_in_room: rect for wall/background + rect for furniture/desk/window + line for floor.
+6. For timeline_scene: timeline_bar element + text for year labels.
+7. For character_explaining: ground + maybe a circle for sun, rect for chalkboard with text.
+8. For text_focus: bg_color + rect as card + text element with the stat/number.
+9. For two_characters: bg_color + ground line + maybe a rect table between them.
+10. Always use #1A1A1A for stroke colors. Use warm/earthy fills like #F5ECD7, #E8D5B7, #8B6914, #2F4F4F, #4A6741.
+11. Every scene MUST have at minimum: bg_color + at least one element.
+
+EXAMPLE BACKGROUNDS BY SCENE:
+- Cave (character_in_room): {"bg_color":"#2F2F2F","elements":[{"type":"rect","x_percent":0,"y_percent":0,"width_percent":100,"height_percent":100,"fill":"#1A1A1A"},{"type":"rect","x_percent":5,"y_percent":5,"width_percent":90,"height_percent":65,"fill":"#2F2F2F","stroke":"#1A1A1A","stroke_width":3,"border_radius":16},{"type":"ground","y_percent":70,"ground_color":"#3D2B1F"},{"type":"text","x_percent":50,"y_percent":12,"content":"CAVE","font_size":48,"text_anchor":"middle","fill":"#FFFFFF"}]}
+- Office (character_in_room): {"bg_color":"#F5F0E8","elements":[{"type":"rect","x_percent":0,"y_percent":0,"width_percent":100,"height_percent":100,"fill":"#F5F0E8"},{"type":"rect","x_percent":60,"y_percent":10,"width_percent":30,"height_percent":40,"fill":"#D4E8F0","stroke":"#1A1A1A","stroke_width":2,"border_radius":4},{"type":"rect","x_percent":10,"y_percent":55,"width_percent":80,"height_percent":8,"fill":"#8B6914","stroke":"#1A1A1A","stroke_width":2},{"type":"line","x1_percent":0,"y1_percent":70,"x2_percent":100,"y2_percent":70,"stroke":"#1A1A1A","stroke_width":3}]}
+- Timeline (timeline_scene): {"bg_color":"#F5ECD7","elements":[{"type":"timeline_bar","fill_percent":65,"fill_color":"#8B4513","remaining_color":"#D4C9A8","year_label":"2024"}]}
+- Chalkboard (character_explaining): {"bg_color":"#F5ECD7","elements":[{"type":"rect","x_percent":10,"y_percent":5,"width_percent":80,"height_percent":60,"fill":"#2F4F4F","stroke":"#1A1A1A","stroke_width":3,"border_radius":8},{"type":"text","x_percent":50,"y_percent":25,"content":"THE BRAIN","font_size":64,"text_anchor":"middle","fill":"#FFFFFF"},{"type":"line","x1_percent":0,"y1_percent":75,"x2_percent":100,"y2_percent":75,"stroke":"#1A1A1A","stroke_width":3}]}
+- Statistic (text_focus): {"bg_color":"#1A1A1A","elements":[{"type":"rect","x_percent":15,"y_percent":25,"width_percent":70,"height_percent":50,"fill":"#F5ECD7","stroke":"#1A1A1A","stroke_width":3,"border_radius":12},{"type":"text","x_percent":50,"y_percent":45,"content":"90%","font_size":96,"text_anchor":"middle"},{"type":"text","x_percent":50,"y_percent":60,"content":"of your decisions","font_size":36,"text_anchor":"middle"}]}
+- Outdoor (character_explaining): {"bg_color":"#D4E8F0","elements":[{"type":"circle","cx_percent":80,"cy_percent":15,"r_percent":8,"fill":"#FFD700","stroke":"#1A1A1A","stroke_width":2},{"type":"ground","y_percent":70,"ground_color":"#7CB342"},{"type":"line","x1_percent":0,"y1_percent":70,"x2_percent":100,"y2_percent":70,"stroke":"#1A1A1A","stroke_width":3}]}
+
 CRITICAL RULES:
-1. Preserve the user's original content and meaning. DO NOT rewrite the topic.
-2. Split into 6-10 sections, each 30-180 seconds of voiceover.
-3. Each section's voiceover_text: 1-3 paragraphs, max ~150 words.
-4. Scenes: 1-3 per section. Each scene = 1-3 sentences (max 30 words).
-5. MOTION TYPES must alternate — no same motion_type in consecutive scenes.
-6. CHARACTER EXPRESSIONS must match the emotional tone of the voiceover.
-7. BACKGROUND COLORS: cycle through the 4 locked colors.
-8. Add '...' and '—' frequently in voiceover_text for natural TTS pauses.
-9. Image prompts MUST include: subject + setting + lighting + mood + style.
-10. subtitle_keyword: the single word with highest emotional weight per scene.
+1-10: same as before but BACKGROUND section replaced with dynamic element-based backgrounds.
 """
 
 
@@ -286,7 +343,8 @@ async def write_script(research_brief: dict, duration_minutes: int, niche: str,
 # STAGE 3 — Scene Plan (V3)
 # ============================================================
 SCENE_SYSTEM = """You are the Scene Director. Break a script into visual scenes.
-Each scene = 1 image (background) + 1 Psyche character expression + 1 motion.
+Each scene = 1 SVG background + 1 Psyche stick figure character + optional props + subtitles.
+All visuals are SVG — NO IMAGE GENERATION.
 
 OUTPUT: Valid JSON only. Start with { and end with }.
 
@@ -297,25 +355,89 @@ The JSON must have EXACTLY these keys:
     {{
       "scene_id": 1,
       "voiceover_text": "<exact text from script>",
-      "image_prompt": "<60-100 word prompt for Flux: subject, setting, lighting, mood, style. Format: '[subject], [setting], [lighting], [mood], cinematic, dark, high contrast, no text, no watermark'>",
-      "motion_type": "<zoom_in_slow|zoom_out_fast|pan_left|pan_right|fade_in|static>",
-      "character_expression": "<default|shocked|thinking|explaining|scared|concerned|knowing>",
-      "character_position": "<center|left|right>",
-      "background_color_hex": "<one of: #0A0A0F | #1A1A24 | #14141C | #08080D>",
-      "subtitle_keyword": "<the most important single word to highlight in gold>"
+      "scene_type": "<character_solo|character_with_prop|character_in_room|character_explaining|timeline_scene|text_focus|two_characters>",
+      "character_expression": "<neutral|curious|shocked|thinking|sad|confident|scared>",
+      "character_position": "<left|center|right>",
+      "character_animation": "<idle|walk_in_left|walk_in_right|walk_out_left|point_up>",
+      "background": {
+        "bg_color": "<hex color>",
+        "elements": [
+          {{
+            "type": "<rect|circle|text|line|path|polygon|timeline_bar|ground>",
+            "x_percent": <0-100 or null>,
+            "y_percent": <0-100 or null>,
+            "width_percent": <0-100 or null>,
+            "height_percent": <0-100 or null>,
+            "cx_percent": <0-100 or null>,
+            "cy_percent": <0-100 or null>,
+            "r_percent": <0-100 or null>,
+            "x1_percent": <0-100 or null>,
+            "y1_percent": <0-100 or null>,
+            "x2_percent": <0-100 or null>,
+            "y2_percent": <0-100 or null>,
+            "fill": "<hex color or null>",
+            "stroke": "<hex color or null>",
+            "stroke_width": <number or null>,
+            "content": "<text>",
+            "font_size": <number>,
+            "text_anchor": "<start|middle|end>",
+            "fill_percent": <0-100>,
+            "fill_color": "<hex>",
+            "remaining_color": "<hex>",
+            "year_label": "<string>",
+            "ground_color": "<hex>",
+            "border_radius": <number>
+          }}
+        ]
+      },
+      "props": [],
+      "prop_position": "right_of_character",
+      "num_characters": 1,
+      "motion_type": "<zoom_in_slow|pan_left|pan_right|static>",
+      "subtitle_keyword": "<single most emotionally weighted word>"
     }}
   ]
 }
 
+BACKGROUND ELEMENT TYPES (all positions as x_percent/y_percent 0-100):
+- "rect": x_percent, y_percent, width_percent, height_percent, fill, stroke, stroke_width, border_radius. Use for walls, windows, signs, panels, doors, frames.
+- "circle": cx_percent, cy_percent, r_percent, fill, stroke, stroke_width. Use for sun, decorative dots, spotlight.
+- "text": x_percent, y_percent, content, font_size (48-72), text_anchor (start/middle/end). Renders in Patrick Hand font. Use for year labels, signs, chalkboard text, titles.
+- "line": x1_percent, y1_percent, x2_percent, y2_percent, stroke, stroke_width. Use for horizon line, floor, shelf, tabletop.
+- "path": d (SVG path), fill, stroke, stroke_width. Use for mountains, waves, abstract curves.
+- "polygon": points (array of {x_percent, y_percent}), fill, stroke, stroke_width. Use for triangles, arrows, diamonds.
+- "timeline_bar": fill_percent (0-100), fill_color, remaining_color, year_label. Historical timeline progress.
+- "ground": y_percent (where ground starts), ground_color. Fills from y_percent to bottom. Rendered BELOW all other elements.
+
+DESIGN RULES:
+1. All positions in percent (0-100). x=50,y=50 = center.
+2. bg_color sets overall wall/page color. Elements layer on top.
+3. Use 2-4 elements per scene. Keep simple and legible.
+4. character_solo: bg_color only, or + a floor line.
+5. character_in_room: rect for wall + rect for desk/window/shelf + line for floor.
+6. timeline_scene: timeline_bar + text year labels.
+7. character_explaining: ground + maybe sun circle + rect chalkboard with text.
+8. text_focus: bg_color + rect card + large text element with stat.
+9. two_characters: bg_color + ground line + maybe table rect between them.
+10. Always use #1A1A1A for strokes. Warm/earthy fills: #F5ECD7, #E8D5B7, #8B6914, #2F4F4F, #4A6741.
+
+EXAMPLE BACKGROUNDS:
+- Cave: {"bg_color":"#2F2F2F","elements":[{"type":"rect","x_percent":0,"y_percent":0,"width_percent":100,"height_percent":100,"fill":"#1A1A1A"},{"type":"rect","x_percent":5,"y_percent":5,"width_percent":90,"height_percent":65,"fill":"#2F2F2F","stroke":"#1A1A1A","stroke_width":3,"border_radius":16},{"type":"ground","y_percent":70,"ground_color":"#3D2B1F"},{"type":"text","x_percent":50,"y_percent":12,"content":"CAVE","font_size":48,"text_anchor":"middle","fill":"#FFFFFF"}]}
+- Office: {"bg_color":"#F5F0E8","elements":[{"type":"rect","x_percent":0,"y_percent":0,"width_percent":100,"height_percent":100,"fill":"#F5F0E8"},{"type":"rect","x_percent":60,"y_percent":10,"width_percent":30,"height_percent":40,"fill":"#D4E8F0","stroke":"#1A1A1A","stroke_width":2,"border_radius":4},{"type":"rect","x_percent":10,"y_percent":55,"width_percent":80,"height_percent":8,"fill":"#8B6914","stroke":"#1A1A1A","stroke_width":2},{"type":"line","x1_percent":0,"y1_percent":70,"x2_percent":100,"y2_percent":70,"stroke":"#1A1A1A","stroke_width":3}]}
+- Timeline: {"bg_color":"#F5ECD7","elements":[{"type":"timeline_bar","fill_percent":65,"fill_color":"#8B4513","remaining_color":"#D4C9A8","year_label":"2024"}]}
+- Chalkboard: {"bg_color":"#F5ECD7","elements":[{"type":"rect","x_percent":10,"y_percent":5,"width_percent":80,"height_percent":60,"fill":"#2F4F4F","stroke":"#1A1A1A","stroke_width":3,"border_radius":8},{"type":"text","x_percent":50,"y_percent":25,"content":"THE BRAIN","font_size":64,"text_anchor":"middle","fill":"#FFFFFF"},{"type":"line","x1_percent":0,"y1_percent":75,"x2_percent":100,"y2_percent":75,"stroke":"#1A1A1A","stroke_width":3}]}
+- Statistic: {"bg_color":"#1A1A1A","elements":[{"type":"rect","x_percent":15,"y_percent":25,"width_percent":70,"height_percent":50,"fill":"#F5ECD7","stroke":"#1A1A1A","stroke_width":3,"border_radius":12},{"type":"text","x_percent":50,"y_percent":45,"content":"90%","font_size":96,"text_anchor":"middle"},{"type":"text","x_percent":50,"y_percent":60,"content":"of your decisions","font_size":36,"text_anchor":"middle"}]}
+- Outdoor: {"bg_color":"#D4E8F0","elements":[{"type":"circle","cx_percent":80,"cy_percent":15,"r_percent":8,"fill":"#FFD700","stroke":"#1A1A1A","stroke_width":2},{"type":"ground","y_percent":70,"ground_color":"#7CB342"},{"type":"line","x1_percent":0,"y1_percent":70,"x2_percent":100,"y2_percent":70,"stroke":"#1A1A1A","stroke_width":3}]}
+
 RULES:
-1. Each scene = 1 image. A section can have 1-3 scenes.
+1. Each scene = 1 SVG-rendered visual. A section can have 1-3 scenes.
 2. voiceover_text per scene: 1-3 sentences (max 30 words).
-3. image_prompt MUST include: subject + setting + lighting + mood + style.
-4. motion_type: cycle through options, NEVER same motion_type 2 scenes in a row.
-5. character_expression must match emotional tone of voiceover.
-6. background_color_hex: use the 4 locked colors in rotation.
-7. subtitle_keyword: the word with highest emotional weight in the scene.
-8. NO DURATION HERE. Set to 0 for now. Real duration set in Stage 5 from audio.
+3. SCENE TYPES: character_solo for narration, character_with_prop for shocking facts, text_focus for stats, character_explaining for explanations, timeline_scene for historical dates, two_characters for emotional dialogue.
+4. BACKGROUND: Use the element system above. Every scene's background MUST have at minimum: bg_color + at least one element.
+5. PROPS available: SkullProp, FireProp, BrainProp, ClockProp, HeartProp, QuestionMarkProp, BookProp, MirrorProp, ChainProp.
+6. motion_type: cycle through options, NEVER same motion_type 2 scenes in a row.
+7. character_expression must match emotional tone of voiceover.
+8. NO DURATION HERE. Set to 0 for now. Real duration set from audio.
 """
 
 

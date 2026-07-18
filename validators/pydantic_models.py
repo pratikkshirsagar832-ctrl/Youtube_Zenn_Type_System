@@ -1,7 +1,7 @@
 """Pydantic models for all 5 Nexus schemas.
 
-Mirrors the JSON schemas in /schemas/. Use these for runtime validation of
-LLM outputs.
+These validate LLM outputs. All scene/character/background types are
+locked and checked against constants in config.
 """
 
 from __future__ import annotations
@@ -10,13 +10,16 @@ from typing import Literal
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 from config import (
-    MotionType,
-    CharacterExpression,
-    CharacterPosition,
-    BACKGROUND_COLORS,
     VALID_NICHES,
     PIPELINE_MIN_SHOT_DURATION_S,
     PIPELINE_MAX_SHOT_DURATION_S,
+    SCENE_TYPES,
+    CHARACTER_EXPRESSIONS,
+    CHARACTER_POSITIONS,
+    CHARACTER_ANIMATIONS,
+    AVAILABLE_PROPS,
+    PROP_POSITIONS,
+    MOTION_TYPES,
 )
 
 
@@ -77,18 +80,35 @@ def validate_script_total(script: Script, duration_minutes: int) -> None:
 
 
 # ============================================================
-# STAGE 3 — Scene Plan
+# STAGE 3 — Scene Plan (Zenn-style SVG scenes)
 # ============================================================
 class Scene(BaseModel):
     scene_id: int = Field(ge=1)
     voiceover_text: str
-    image_prompt: str = Field(default="")
-    motion_type: str = Field(default="zoom_in_slow")
-    character_expression: str = Field(default="default")
-    character_position: str = Field(default="center")
-    background_color_hex: str = Field(default="#0A0A0F")
-    subtitle_keyword: str = Field(default="")
     duration_seconds: float = Field(ge=0.0, default=0.0)
+    scene_type: Literal[
+        "character_solo", "character_with_prop", "character_in_room",
+        "character_explaining", "timeline_scene", "text_focus",
+        "two_characters"
+    ] = "character_solo"
+    character_expression: Literal[
+        "neutral", "curious", "shocked", "thinking", "sad", "confident", "scared"
+    ] = "neutral"
+    character_position: Literal["left", "center", "right"] = "center"
+    character_animation: Literal[
+        "idle", "walk_in_left", "walk_in_right", "walk_out_left", "point_up"
+    ] = "idle"
+    background: dict = Field(
+        default_factory=lambda: {
+            "bg_color": "#FFFFFF",
+            "elements": []
+        }
+    )
+    props: list[str] = []
+    prop_position: str = "right_of_character"
+    num_characters: int = Field(ge=1, le=2, default=1)
+    motion_type: str = "zoom_in_slow"
+    subtitle_keyword: str = ""
 
 
 class ScenePlan(BaseModel):
@@ -150,12 +170,20 @@ class AudioConfig(BaseModel):
 class EditScene(BaseModel):
     scene_id: int
     duration_seconds: float = Field(ge=PIPELINE_MIN_SHOT_DURATION_S, le=PIPELINE_MAX_SHOT_DURATION_S)
-    image_path: str
-    image_prompt: str = ""
-    motion_type: str
-    character_expression: str
-    character_position: str
-    background_color_hex: str
+    scene_type: str = "character_solo"
+    character_expression: str = "neutral"
+    character_position: str = "center"
+    character_animation: str = "idle"
+    background: dict = Field(
+        default_factory=lambda: {
+            "bg_color": "#FFFFFF",
+            "elements": []
+        }
+    )
+    props: list[str] = []
+    prop_position: str = "right_of_character"
+    num_characters: int = 1
+    motion_type: str = "zoom_in_slow"
     subtitle_keyword: str = ""
     voiceover_text: str = ""
     subtitle_words: list[SubtitleWord] = Field(default_factory=list)
@@ -165,13 +193,3 @@ class EditDecisions(BaseModel):
     total_duration_seconds: float = Field(ge=1.0)
     audio: AudioConfig
     scenes: list[EditScene] = Field(min_length=1)
-
-    @field_validator("scenes")
-    @classmethod
-    def check_consecutive_motion(cls, v: list[EditScene]) -> list[EditScene]:
-        for i in range(1, len(v)):
-            if v[i].motion_type == v[i - 1].motion_type:
-                raise ValueError(
-                    f"EditScenes {v[i-1].scene_id} and {v[i].scene_id} have the same motion_type."
-                )
-        return v

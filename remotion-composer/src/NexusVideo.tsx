@@ -1,25 +1,23 @@
 import React from "react";
 import { AbsoluteFill, Audio, Sequence, staticFile, useVideoConfig } from "remotion";
-import { DynamicImage, MotionType } from "./DynamicImage";
-import { SubtitleLayer, SubtitleWord } from "./SubtitleLayer";
-
-// ---------------------------------------------------------------------------
-// NexusVideo — main composition for the Nexus pipeline.
-// 2 layers per scene:
-//   1. DynamicImage (Ken Burns background)
-//   2. SubtitleLayer (word-by-word gold captions)
-// + audio (voiceover at full volume, music at 25% if present).
-// ---------------------------------------------------------------------------
+import { SceneRenderer, SceneData } from "./components/SceneRenderer";
+import { SubtitleWord } from "./SubtitleLayer";
 
 export interface NexusScene {
   scene_id: number;
   duration_seconds: number;
-  image_path: string;
-  image_prompt?: string;
-  motion_type: MotionType;
-  background_color_hex: string;
-  subtitle_keyword?: string;
-  voiceover_text?: string;
+  scene_type: string;
+  character_expression: string;
+  character_position: string;
+  character_animation: string;
+  background: {
+    bg_color: string;
+    elements: Array<Record<string, unknown>>;
+  };
+  props: string[];
+  prop_position: string;
+  num_characters: number;
+  motion_type: string;
   subtitle_words: SubtitleWord[];
 }
 
@@ -33,6 +31,7 @@ export interface NexusVideoProps {
   total_duration_seconds: number;
   audio: NexusAudio;
   scenes: NexusScene[];
+  [key: string]: unknown;
 }
 
 const NexusSceneBlock: React.FC<{
@@ -42,15 +41,7 @@ const NexusSceneBlock: React.FC<{
 }> = ({ scene, startFrame, durationInFrames }) => {
   return (
     <Sequence from={startFrame} durationInFrames={durationInFrames}>
-      <AbsoluteFill>
-        <DynamicImage
-          imagePath={scene.image_path}
-          motionType={scene.motion_type}
-          durationInFrames={durationInFrames}
-          backgroundColor={scene.background_color_hex}
-        />
-        <SubtitleLayer words={scene.subtitle_words} />
-      </AbsoluteFill>
+      <SceneRenderer scene={scene as unknown as SceneData} />
     </Sequence>
   );
 };

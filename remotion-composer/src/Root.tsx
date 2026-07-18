@@ -1,5 +1,8 @@
 import { Composition, CalculateMetadataFunction } from "remotion";
+import { loadFont } from "@remotion/google-fonts/PatrickHand";
 import { NexusVideo, NexusVideoProps } from "./NexusVideo";
+
+const { fontFamily } = loadFont();
 
 const calculateNexusMetadata: CalculateMetadataFunction<NexusVideoProps> = async ({
   props,

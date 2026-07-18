@@ -1,10 +1,10 @@
 """Nexus pipeline orchestrator.
 
 Order:
-  script mode: 0. Enhance script (V3) → 1. TTS → 2. Whisper → 3. Align → 4. Image gen → 5. Render
-  topic mode:  0. Research (R1) → Script (V3) → Scene Plan → 1. TTS → 2. Whisper → 3. Align → 4. Image gen → 5. Render
+  script mode: 0. Enhance script (V3) → 1. TTS → 2. Whisper → 3. Align → 4. Render
+  topic mode:  0. Research (R1) → Script (V3) → Scene Plan → 1. TTS → 2. Whisper → 3. Align → 4. Render
 
-Key: images are generated AFTER Whisper so they visually match the actual spoken words.
+No image generation — all visuals are SVG rendered by Remotion.
 """
 
 from __future__ import annotations
@@ -34,7 +34,6 @@ def _project_dir(project_id: str) -> Path:
     p = PROJECTS_DIR / project_id
     p.mkdir(parents=True, exist_ok=True)
     (p / "audio").mkdir(exist_ok=True)
-    (p / "images").mkdir(exist_ok=True)
     return p
 
 
@@ -126,77 +125,21 @@ async def stage_3_align(inp: PipelineInput, scene_plan: dict, word_ts: dict,
 
 
 # ============================================================
-# STAGE 4 — Generate stickman images from actual spoken words
+# STAGE 4 — Build edit_decisions + Remotion render
+# (No image generation — all visuals are SVG rendered by Remotion)
 # ============================================================
-async def stage_4_images(inp: PipelineInput, aligned_scenes: list[dict],
-                         on_progress: ProgressCallback | None) -> list[dict]:
-    _emit(on_progress, "stage_4_images", "Generating stickman images from transcript", 0.65)
-    from tools.pollinations_image import generate_images_batch
-
-    # Fixed seed from project_id so stickman is consistent across all images
-    project_seed = abs(hash(inp.project_id)) % (2**31)
-
-    for s in aligned_scenes:
-        words_text = " ".join(w["word"] for w in s.get("subtitle_words", []))
-        s["image_prompt"] = _build_stickman_prompt(words_text, s.get("subtitle_keyword", ""))
-
-    project_dir = _project_dir(inp.project_id)
-    results = await generate_images_batch(
-        scenes=aligned_scenes,
-        output_dir=str(project_dir / "images"),
-        project_seed=project_seed,
-    )
-
-    _emit(on_progress, "stage_4_images", f"{len(results)} images generated", 0.80)
-    return results
-
-
-def _build_stickman_prompt(words_text: str, keyword: str) -> str:
-    """Build a high-quality stickman prompt with CONSISTENT output.
-
-    Forces pure white background, single black stickman figure.
-    Includes quality modifiers and scene-specific description.
-    """
-    text = words_text.strip()
-    if not text:
-        return "single black stick figure on pure white background, high quality minimalist line art, crisp black lines, no shading, flat vector illustration, professional storyboard style, ultra clean, sharp focus"
-
-    key_terms = [w.lower().strip(".,!?;:") for w in text.split()[:10] if len(w) > 3]
-    scene_desc = ", ".join(key_terms[:6]) if key_terms else text[:80]
-
-    prompt = (
-        f"single black stick figure on pure white background, "
-        f"high quality minimalist line art showing {scene_desc}, "
-        f"crisp black lines, one black stickman character only, "
-        f"no other elements, no shading, no colors except black and white, "
-        f"flat vector illustration, professional storyboard style, "
-        f"ultra clean, sharp focus, high contrast, pure white background, "
-        f"simple doodle style, 4k quality"
-    )
-    if keyword:
-        prompt = f"black stickman {keyword}, " + prompt
-    return prompt
-
-
-# ============================================================
-# STAGE 5 — Build edit_decisions + Remotion render
-# ============================================================
-async def stage_5_render(inp: PipelineInput, aligned_scenes: list[dict],
-                         image_results: list[dict], tts_result: dict,
+async def stage_4_render(inp: PipelineInput, aligned_scenes: list[dict],
+                         tts_result: dict,
                          on_progress: ProgressCallback | None) -> dict:
-    _emit(on_progress, "stage_5_render", "Building edit decisions and rendering", 0.85)
+    _emit(on_progress, "stage_4_render", "Building edit decisions and rendering", 0.85)
     from tools.remotion_render import render_video
     from tools.scene_aligner import build_edit_decisions
 
-    # Map image paths to aligned scenes
-    img_map = {}
-    for r in image_results:
-        sid = r.get("scene_id")
-        path = r.get("image_path", "")
-        if sid and path:
-            img_map[sid] = path
-
-    edit = build_edit_decisions(aligned_scenes, img_map, "audio/voiceover.wav", tts_result["duration_seconds"])
+    edit = build_edit_decisions(
+        aligned_scenes,
+        "audio/voiceover.wav",
+        tts_result["duration_seconds"],
+    )
 
     project_dir = _project_dir(inp.project_id)
     (project_dir / "edit_decisions.json").write_text(json.dumps(edit, indent=2), encoding="utf-8")
@@ -209,7 +152,7 @@ async def stage_5_render(inp: PipelineInput, aligned_scenes: list[dict],
         output_path=mp4_path,
     )
 
-    _emit(on_progress, "stage_5_complete", "Render complete", 1.0)
+    _emit(on_progress, "stage_4_complete", "Render complete", 1.0)
     return {
         "mp4_path": mp4_path,
         "total_duration_seconds": edit["total_duration_seconds"],
@@ -283,6 +226,5 @@ async def run_pipeline(inp: PipelineInput,
     tts_result = await stage_1_tts(inp, script, on_progress)
     word_ts = await stage_2_whisper(inp, tts_result, on_progress)
     aligned = await stage_3_align(inp, scenes, word_ts, tts_result, on_progress)
-    image_results = await stage_4_images(inp, aligned, on_progress)
-    final = await stage_5_render(inp, aligned, image_results, tts_result, on_progress)
+    final = await stage_4_render(inp, aligned, tts_result, on_progress)
     return final
