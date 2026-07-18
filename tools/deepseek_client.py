@@ -145,7 +145,7 @@ The JSON must have EXACTLY these keys:
           }
         ]
       },
-      "props": [],
+      "props": [],  // ARRAY OF PROP NAME STRINGS: ["BrainProp"] or ["SkullProp"] — NEVER objects
       "prop_position": "right_of_character",
       "num_characters": 1,
       "motion_type": "<zoom_in_slow|pan_left|pan_right|static>",
@@ -187,6 +187,7 @@ EXAMPLE BACKGROUNDS BY SCENE:
 
 CRITICAL RULES:
 1-10: same as before but BACKGROUND section replaced with dynamic element-based backgrounds.
+11. PROPS is an array of STRINGS ONLY. Example: "props": ["BrainProp"] or "props": []. NEVER use objects for props.
 """
 
 
@@ -390,7 +391,7 @@ The JSON must have EXACTLY these keys:
           }}
         ]
       },
-      "props": [],
+      "props": [],  // ARRAY OF PROP NAME STRINGS: ["BrainProp"] or ["SkullProp"] — NEVER objects
       "prop_position": "right_of_character",
       "num_characters": 1,
       "motion_type": "<zoom_in_slow|pan_left|pan_right|static>",
@@ -434,7 +435,7 @@ RULES:
 2. voiceover_text per scene: 1-3 sentences (max 30 words).
 3. SCENE TYPES: character_solo for narration, character_with_prop for shocking facts, text_focus for stats, character_explaining for explanations, timeline_scene for historical dates, two_characters for emotional dialogue.
 4. BACKGROUND: Use the element system above. Every scene's background MUST have at minimum: bg_color + at least one element.
-5. PROPS available: SkullProp, FireProp, BrainProp, ClockProp, HeartProp, QuestionMarkProp, BookProp, MirrorProp, ChainProp.
+5. PROPS available: SkullProp, FireProp, BrainProp, ClockProp, HeartProp, QuestionMarkProp, BookProp, MirrorProp, ChainProp. PROPS is an ARRAY OF STRINGS. Example: "props": ["BrainProp"] or "props": []. NEVER use objects — just the prop name string.
 6. motion_type: cycle through options, NEVER same motion_type 2 scenes in a row.
 7. character_expression must match emotional tone of voiceover.
 8. NO DURATION HERE. Set to 0 for now. Real duration set from audio.
