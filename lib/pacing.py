@@ -21,6 +21,7 @@ CHARACTER_EXPRESSIONS = [
     "sad",
     "confident",
     "scared",
+    "confused",
 ]
 
 CHARACTER_POSITIONS = ["left", "center", "right"]

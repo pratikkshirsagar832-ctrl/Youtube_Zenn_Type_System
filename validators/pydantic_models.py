@@ -92,7 +92,7 @@ class Scene(BaseModel):
         "two_characters"
     ] = "character_solo"
     character_expression: Literal[
-        "neutral", "curious", "shocked", "thinking", "sad", "confident", "scared"
+        "neutral", "curious", "shocked", "thinking", "sad", "confident", "scared", "confused"
     ] = "neutral"
     character_position: Literal["left", "center", "right"] = "center"
     character_animation: Literal[

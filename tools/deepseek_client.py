@@ -110,7 +110,7 @@ The JSON must have EXACTLY these keys:
       "scene_id": 1,
       "voiceover_text": "<exact 1-3 sentence chunk from a section>",
       "scene_type": "<character_solo|character_with_prop|character_in_room|character_explaining|timeline_scene|text_focus|two_characters>",
-      "character_expression": "<neutral|curious|shocked|thinking|sad|confident|scared>",
+      "character_expression": "<neutral|curious|shocked|thinking|sad|confident|scared|confused>",
       "character_position": "<left|center|right>",
       "character_animation": "<idle|walk_in_left|walk_in_right|walk_out_left|point_up>",
       "background": {
@@ -357,7 +357,7 @@ The JSON must have EXACTLY these keys:
       "scene_id": 1,
       "voiceover_text": "<exact text from script>",
       "scene_type": "<character_solo|character_with_prop|character_in_room|character_explaining|timeline_scene|text_focus|two_characters>",
-      "character_expression": "<neutral|curious|shocked|thinking|sad|confident|scared>",
+      "character_expression": "<neutral|curious|shocked|thinking|sad|confident|scared|confused>",
       "character_position": "<left|center|right>",
       "character_animation": "<idle|walk_in_left|walk_in_right|walk_out_left|point_up>",
       "background": {

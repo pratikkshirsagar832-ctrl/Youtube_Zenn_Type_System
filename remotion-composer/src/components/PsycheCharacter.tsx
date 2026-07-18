@@ -8,7 +8,8 @@ export type PsycheExpression =
   | "thinking"
   | "sad"
   | "confident"
-  | "scared";
+  | "scared"
+  | "confused";
 
 export type PsychePosition = "left" | "center" | "right";
 export type PsycheAnimation = "idle" | "walk_in_left" | "walk_in_right" | "walk_out_left" | "point_up";
@@ -296,6 +297,11 @@ export const PsycheCharacter: React.FC<PsycheCharacterProps> = ({
               <LeftEyebrow offsetY={5} />
               <RightEyebrow offsetY={0} />
             </>
+          ) : expression === "confused" ? (
+            <>
+              <LeftEyebrow offsetY={-3} tilt={3} />
+              <RightEyebrow offsetY={5} tilt={-2} />
+            </>
           ) : (
             <>
               <LeftEyebrow offsetY={0} />
@@ -310,6 +316,7 @@ export const PsycheCharacter: React.FC<PsycheCharacterProps> = ({
           {expression === "sad" && <MouthSad />}
           {expression === "confident" && <MouthConfident />}
           {expression === "scared" && <MouthScared />}
+          {expression === "confused" && <MouthThinking />}
 
           <Body />
           <Legs />
