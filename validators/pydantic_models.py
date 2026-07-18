@@ -56,7 +56,7 @@ class ScriptSection(BaseModel):
 
 class Script(BaseModel):
     title: str = Field(max_length=70)
-    description: str = Field(max_length=500)
+    description: str = Field(max_length=1000)
     tags: list[str] = Field(default_factory=list, max_length=20)
     hook: str = Field(default="", max_length=500)
     sections: list[ScriptSection] = Field(min_length=1, max_length=30)
