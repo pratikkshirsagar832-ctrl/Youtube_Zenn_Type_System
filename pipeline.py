@@ -134,6 +134,7 @@ async def stage_4_render(inp: PipelineInput, aligned_scenes: list[dict],
     _emit(on_progress, "stage_4_render", "Building edit decisions and rendering", 0.85)
     from tools.remotion_render import render_video
     from tools.scene_aligner import build_edit_decisions
+    from tools.scene_slicer import slice_scenes
 
     edit = build_edit_decisions(
         aligned_scenes,
@@ -141,21 +142,25 @@ async def stage_4_render(inp: PipelineInput, aligned_scenes: list[dict],
         tts_result["duration_seconds"],
     )
 
+    # Slice scenes into 2-second chunks for rapid visual changes
+    sliced = slice_scenes(edit)
+    print(f"[scene_slicer] {len(edit['scenes'])} scenes → {len(sliced['scenes'])} chunks", flush=True)
+
     project_dir = _project_dir(inp.project_id)
-    (project_dir / "edit_decisions.json").write_text(json.dumps(edit, indent=2), encoding="utf-8")
+    (project_dir / "edit_decisions.json").write_text(json.dumps(sliced, indent=2), encoding="utf-8")
 
     mp4_path = str(project_dir / "final_render.mp4")
     await asyncio.to_thread(
         render_video,
         project_id=inp.project_id,
-        edit_decisions=edit,
+        edit_decisions=sliced,
         output_path=mp4_path,
     )
 
     _emit(on_progress, "stage_4_complete", "Render complete", 1.0)
     return {
         "mp4_path": mp4_path,
-        "total_duration_seconds": edit["total_duration_seconds"],
+        "total_duration_seconds": sliced["total_duration_seconds"],
     }
 
 
