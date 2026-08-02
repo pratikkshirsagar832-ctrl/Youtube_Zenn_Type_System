@@ -52,8 +52,9 @@ def _extract_json(text: str) -> dict:
 
 
 def _call(model: str, system: str, user: str, max_tokens: int = 6000, temperature: float = 0.5,
-          retries: int = 3) -> dict:
-    """Call DeepSeek and return parsed JSON dict. Retries on parse failure."""
+          retries: int = 5) -> dict:
+    """Call DeepSeek and return parsed JSON dict. Retries on parse failure/empty content."""
+    import time as _time
     client = _client()
     last_err: Exception | None = None
     for attempt in range(1, retries + 1):
@@ -69,6 +70,11 @@ def _call(model: str, system: str, user: str, max_tokens: int = 6000, temperatur
                 response_format={"type": "json_object"},
             )
             content = resp.choices[0].message.content or ""
+            finish = resp.choices[0].finish_reason
+            if not content.strip():
+                # DeepSeek R1 intermittently returns empty content under load
+                print(f"[deepseek] attempt {attempt}: empty content (finish={finish}) — retrying", flush=True)
+                raise ValueError("empty content")
             return _extract_json(content)
         except json.JSONDecodeError as e:
             last_err = e
@@ -76,6 +82,8 @@ def _call(model: str, system: str, user: str, max_tokens: int = 6000, temperatur
         except Exception as e:
             last_err = e
             print(f"[deepseek] attempt {attempt}: {type(e).__name__}: {e}", flush=True)
+        if attempt < retries:
+            _time.sleep(min(2 ** (attempt - 1) * 2, 30))
     raise RuntimeError(f"DeepSeek call failed after {retries} attempts: {last_err}")
 
 
@@ -302,7 +310,7 @@ async def run_research(topic: str, niche: str,
         model=DEEPSEEK_MODEL_REASONING,
         system=system_prompt_override or RESEARCH_SYSTEM,
         user=user,
-        max_tokens=8000,
+        max_tokens=12000,
         temperature=0.4,
     )
 
