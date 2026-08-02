@@ -105,12 +105,12 @@ def _call(model: str, system: str, user: str, max_tokens: int = 6000, temperatur
 # Takes raw user script, reformats into timed voiceover paragraphs
 # + full scene plan in a single call.
 # ============================================================
-ENHANCE_SYSTEM = """You are a CINEMATIC video production director. The user has provided a raw script.
-Your job is to split it into perfectly timed voiceover sections and plan every visual scene with rich SVG backgrounds.
+ENHANCE_SYSTEM = """You are the Script Director for a dark-psychology YouTube explainer channel.
+The user provided a raw script. Split it into perfectly timed voiceover sections and plan
+every visual scene. Scenes are later rendered as AI illustrations — you only supply minimal
+scene metadata.
 
-All visuals are SVG — NO IMAGE GENERATION. Make every scene visually striking and detailed.
-
-OUTPUT: Valid JSON only. Start with { and end with }.
+OUTPUT: Valid JSON only. Start with { and end with }. Do NOT reason step by step — output the JSON immediately.
 
 The JSON must have EXACTLY these keys:
 {
@@ -133,54 +133,11 @@ The JSON must have EXACTLY these keys:
       "scene_id": 1,
       "voiceover_text": "<exact 1-3 sentence chunk from a section>",
       "scene_type": "<character_solo|character_with_prop|character_in_room|character_explaining|timeline_scene|text_focus|two_characters>",
-      "character_expression": "<neutral|curious|shocked|thinking|sad|confident|scared|confused>",
+      "character_expression": "<neutral|curious|shocked|thinking|sad|confident|scared|confused|angry|happy|worried|serious>",
       "character_position": "<left|center|right>",
       "character_animation": "<idle|walk_in_left|walk_in_right|walk_out_left|point_up>",
-      "background": {
-        "bg_color": "<hex color like #F5ECD7 or #1A1A1A or #2F4F4F or #F5F0E8 or #D4E8F0>",
-        "elements": [
-          {{
-            "type": "<rect|circle|text|line|path|polygon|timeline_bar|ground|curve|decoration|dotted|grid>",
-            "x_percent": <number>,
-            "y_percent": <number>,
-            "width_percent": <number>,
-            "height_percent": <number>,
-            "cx_percent": <number>,
-            "cy_percent": <number>,
-            "r_percent": <number>,
-            "x1_percent": <number>,
-            "y1_percent": <number>,
-            "x2_percent": <number>,
-            "y2_percent": <number>,
-            "fill": "<hex color>",
-            "stroke": "<hex color>",
-            "stroke_width": <number>,
-            "content": "<text>",
-            "font_size": <number 48-96>,
-            "text_anchor": "<start|middle|end>",
-            "fill_percent": <0-100>,
-            "fill_color": "<hex>",
-            "remaining_color": "<hex>",
-            "year_label": "<string>",
-            "ground_color": "<hex>",
-            "border_radius": <number>,
-            "opacity": <0.0-1.0>,
-            "from_x": <number>,
-            "from_y": <number>,
-            "to_x": <number>,
-            "to_y": <number>,
-            "control_x": <number>,
-            "control_y": <number>,
-            "shape": "<star|cross|zigzag>",
-            "rows": <number>,
-            "cols": <number>,
-            "dot_r": <number>,
-            "spacing_x": <number>,
-            "spacing_y": <number>
-          }}
-        ]
-      },
-      "props": [],  // STRING ARRAY ONLY: ["BrainProp"] or ["SkullProp"] or []. NEVER objects.
+      "background": {{"bg_color": "<hex color>"}},
+      "props": [],  // STRING ARRAY ONLY: ["BrainProp"] or ["ClockProp"] or []. NEVER objects.
       "prop_position": "right_of_character",
       "num_characters": 1,
       "motion_type": "<zoom_in_slow|pan_left|pan_right|static>",
@@ -189,45 +146,17 @@ The JSON must have EXACTLY these keys:
   ]
 }
 
-AVAILABLE BACKGROUND ELEMENT TYPES:
-- "rect": filled/stroked rectangle. Use for walls, windows, doors, frames, signs, furniture, tables.
-- "circle": filled/stroked circle/ellipse. Use for sun, moon, lamps, decorative dots, spotlights.
-- "text": text rendered in Patrick Hand font. Use for titles, year labels, signs, stats, chalkboard writing.
-- "line": straight/wobbly line. Use for floor lines, horizon, shelves, table edges, borders, dividers.
-- "path": custom SVG path string. Use for mountains, waves, abstract shapes, curves.
-- "polygon": multi-point shape. Use for arrows, triangles, diamonds, abstract geometric decors.
-- "timeline_bar": progress bar with year label. Use for historical timelines.
-- "ground": fills from y_percent to bottom of screen. Use for floor, grass, ground.
-- "curve": quadratic bezier curve defined by from_x/y, to_x/y, control_x/y. Use for banners, decorative arcs.
-- "decoration": decorative shapes. Set shape="star" | "cross" | "zigzag", positioned by cx/cy/r.
-- "dotted": dot pattern grid. rows, cols, dot_r, spacing_x/y, x_percent/y_percent as top-left.
-- "grid": grid lines pattern. rows, cols, spacing_x/y, x_percent/y_percent as top-left.
-
-DESIGN RULES:
-1. Every scene MUST have 3-8 elements minimum. More elements = richer visuals.
-2. Vary bg_color between scenes — dark for drama, warm for storytelling, blue for calm, green for nature.
-3. Always include: background fill rect + ground/floor line + 2-6 decorative elements.
-4. Use text elements font_size 48-96 for titles and key numbers.
-5. Add dotted/grid patterns in background at low opacity (0.05-0.15) for texture.
-6. Add curve elements for banners, arches, decorative flourishes.
-7. Add star/cross decorations at low opacity for visual interest.
-8. Color palette: stroke=#1A1A1A. Fills: warm creams (#FFF8F2, #F5ECD7, #E8D5B7), earth (#8B6914, #A0522D), deep (#2F4F4F, #1A1A1A), accent (#FF6B35, #4A6741, #D4E8F0).
-
-EXAMPLE SCENES:
-- character_solo: {"bg_color":"#F5ECD7","elements":[{"type":"rect","x_percent":0,"y_percent":0,"width_percent":100,"height_percent":100,"fill":"#FFF8F2"},{"type":"dotted","x_percent":2,"y_percent":5,"rows":12,"cols":16,"dot_r":0.2,"spacing_x":6,"spacing_y":5,"opacity":0.08},{"type":"line","x1_percent":0,"y1_percent":75,"x2_percent":100,"y2_percent":75,"stroke":"#1A1A1A","stroke_width":3}]}
-- character_in_room (cave): {"bg_color":"#2F2F2F","elements":[{"type":"rect","x_percent":0,"y_percent":0,"width_percent":100,"height_percent":100,"fill":"#1A1A1A"},{"type":"rect","x_percent":5,"y_percent":5,"width_percent":90,"height_percent":60,"fill":"#2F2F2F","stroke":"#1A1A1A","stroke_width":3,"border_radius":16},{"type":"ground","y_percent":65,"ground_color":"#3D2B1F"},{"type":"text","x_percent":50,"y_percent":10,"content":"CAVE","font_size":48,"text_anchor":"middle","fill":"#FFFFFF"},{"type":"decoration","cx_percent":15,"cy_percent":20,"r_percent":1.5,"fill":"#FFFFFF","opacity":0.15,"shape":"star"},{"type":"decoration","cx_percent":85,"cy_percent":25,"r_percent":1,"fill":"#FFFFFF","opacity":0.1,"shape":"star"}]}
-- character_in_room (office): {"bg_color":"#F5F0E8","elements":[{"type":"rect","x_percent":0,"y_percent":0,"width_percent":100,"height_percent":100,"fill":"#F5F0E8"},{"type":"dotted","x_percent":3,"y_percent":3,"rows":10,"cols":15,"dot_r":0.15,"spacing_x":6,"spacing_y":6,"opacity":0.06},{"type":"rect","x_percent":65,"y_percent":8,"width_percent":28,"height_percent":35,"fill":"#D4E8F0","stroke":"#1A1A1A","stroke_width":2,"border_radius":4},{"type":"rect","x_percent":10,"y_percent":52,"width_percent":80,"height_percent":6,"fill":"#8B6914","stroke":"#1A1A1A","stroke_width":2},{"type":"line","x1_percent":0,"y1_percent":70,"x2_percent":100,"y2_percent":70,"stroke":"#1A1A1A","stroke_width":3}]}
-- timeline_scene: {"bg_color":"#F5ECD7","elements":[{"type":"dotted","x_percent":0,"y_percent":0,"rows":8,"cols":12,"dot_r":0.2,"spacing_x":8,"spacing_y":8,"opacity":0.05},{"type":"timeline_bar","fill_percent":42,"fill_color":"#8B4513","remaining_color":"#D4C9A8","year_label":"1957"},{"type":"text","x_percent":50,"y_percent":65,"content":"Timeline","font_size":48,"text_anchor":"middle"}]}
-- character_explaining (chalkboard): {"bg_color":"#F5ECD7","elements":[{"type":"rect","x_percent":0,"y_percent":0,"width_percent":100,"height_percent":100,"fill":"#F5ECD7"},{"type":"dotted","x_percent":2,"y_percent":2,"rows":6,"cols":10,"dot_r":0.2,"spacing_x":9,"spacing_y":9,"opacity":0.08},{"type":"rect","x_percent":12,"y_percent":5,"width_percent":76,"height_percent":55,"fill":"#2F4F4F","stroke":"#1A1A1A","stroke_width":3,"border_radius":8},{"type":"text","x_percent":50,"y_percent":20,"content":"THE AMYGDALA","font_size":56,"text_anchor":"middle","fill":"#FFFFFF"},{"type":"text","x_percent":50,"y_percent":35,"content":"\"Fear Center\"","font_size":40,"text_anchor":"middle","fill":"#E8D5B7"},{"type":"line","x1_percent":0,"y1_percent":72,"x2_percent":100,"y2_percent":72,"stroke":"#1A1A1A","stroke_width":3}]}
-- text_focus (stat): {"bg_color":"#1A1A1A","elements":[{"type":"rect","x_percent":0,"y_percent":0,"width_percent":100,"height_percent":100,"fill":"#1A1A1A"},{"type":"rect","x_percent":12,"y_percent":18,"width_percent":76,"height_percent":64,"fill":"#FFF8F2","stroke":"#1A1A1A","stroke_width":3,"border_radius":16},{"type":"text","x_percent":50,"y_percent":42,"content":"90%","font_size":120,"text_anchor":"middle"},{"type":"text","x_percent":50,"y_percent":60,"content":"of decisions are subconscious","font_size":40,"text_anchor":"middle"},{"type":"decoration","cx_percent":30,"cy_percent":35,"r_percent":2,"fill":"#1A1A1A","opacity":0.1,"shape":"star"},{"type":"decoration","cx_percent":70,"cy_percent":35,"r_percent":2,"fill":"#1A1A1A","opacity":0.1,"shape":"star"}]}
-- two_characters: {"bg_color":"#F5ECD7","elements":[{"type":"rect","x_percent":0,"y_percent":0,"width_percent":100,"height_percent":100,"fill":"#F5ECD7"},{"type":"grid","x_percent":0,"y_percent":0,"rows":8,"cols":12,"spacing_x":8,"spacing_y":7,"opacity":0.04},{"type":"rect","x_percent":30,"y_percent":55,"width_percent":40,"height_percent":10,"fill":"#8B6914","stroke":"#1A1A1A","stroke_width":2,"border_radius":4},{"type":"line","x1_percent":0,"y1_percent":75,"x2_percent":100,"y2_percent":75,"stroke":"#1A1A1A","stroke_width":3}]}
-- outdoor: {"bg_color":"#D4E8F0","elements":[{"type":"rect","x_percent":0,"y_percent":0,"width_percent":100,"height_percent":100,"fill":"#D4E8F0"},{"type":"circle","cx_percent":82,"cy_percent":14,"r_percent":7,"fill":"#FFD700","stroke":"#1A1A1A","stroke_width":2},{"type":"ground","y_percent":68,"ground_color":"#7CB342"},{"type":"line","x1_percent":0,"y1_percent":68,"x2_percent":100,"y2_percent":68,"stroke":"#1A1A1A","stroke_width":3},{"type":"curve","from_x":10,"from_y":40,"to_x":40,"to_y":40,"control_x":25,"control_y":25,"stroke":"#4A6741","stroke_width":2,"opacity":0.3}]}
-
 CRITICAL RULES:
-1. Each scene = 1 rich SVG illustration. Always include 4-8 background elements.
-2. PROPS is STRING ARRAY ONLY: ["BrainProp"] or []. NEVER objects.
-3. motion_type: cycle, never repeat 2 in a row.
-4. character_expression must match emotional tone.
+1. One scene per 1-3 sentence chunk of voiceover. If the user provided a per-scene
+   breakdown, preserve their scene count and order exactly.
+2. bg_color palette — vary across scenes: #F5ECD7 warm cream, #1A1A1A dark charcoal,
+   #2F4F4F deep teal, #F5F0E8 light cream, #D4E8F0 pale blue, #2C1810 deep brown,
+   #D4AF37 warm gold, #8B0000 dark red, #FFFFFF white, #0F0F0F near black.
+3. PROPS is STRING ARRAY ONLY: ["BrainProp"]|["SkullProp"]|["ClockProp"]|["BookProp"]|
+   ["QuestionMarkProp"]|["HeartProp"]|["MirrorProp"]|["ChainProp"]|["FireProp"] or []. NEVER objects.
+4. motion_type: cycle, never repeat 2 in a row.
+5. character_expression must match the emotional tone of the line.
+6. MINIMAL SCHEMA — do not add any extra keys to scenes. No elements, no decorations, no SVG.
 """
 
 
@@ -446,8 +375,8 @@ async def write_script(research_brief: dict, duration_minutes: int, niche: str,
 # STAGE 3 — Scene Plan (V3)
 # ============================================================
 SCENE_SYSTEM = """You are a CINEMATIC Scene Director for a Zenn-style explainer video.
-Each scene is a hand-drawn SVG illustration with a stick figure character and rich background.
-All visuals are SVG — NO IMAGE GENERATION. Make every scene visually striking and detailed.
+Every scene is later rendered as an AI illustration with a stick figure character.
+You only supply minimal scene metadata — no SVG, no element lists.
 
 OUTPUT: Valid JSON only. Start with { and end with }.
 
@@ -459,53 +388,10 @@ The JSON must have EXACTLY these keys:
       "scene_id": 1,
       "voiceover_text": "<exact 1-3 sentences from script>",
       "scene_type": "<character_solo|character_with_prop|character_in_room|character_explaining|timeline_scene|text_focus|two_characters>",
-      "character_expression": "<neutral|curious|shocked|thinking|sad|confident|scared|confused>",
+      "character_expression": "<neutral|curious|shocked|thinking|sad|confident|scared|confused|angry|happy|worried|serious>",
       "character_position": "<left|center|right>",
       "character_animation": "<idle|walk_in_left|walk_in_right|walk_out_left|point_up>",
-      "background": {
-        "bg_color": "<hex color like #F5ECD7 or #1A1A1A or #2F4F4F or #F5F0E8 or #D4E8F0>",
-        "elements": [
-          {{
-            "type": "<rect|circle|text|line|path|polygon|timeline_bar|ground|curve|decoration|dotted|grid>",
-            "x_percent": <number>,
-            "y_percent": <number>,
-            "width_percent": <number>,
-            "height_percent": <number>,
-            "cx_percent": <number>,
-            "cy_percent": <number>,
-            "r_percent": <number>,
-            "x1_percent": <number>,
-            "y1_percent": <number>,
-            "x2_percent": <number>,
-            "y2_percent": <number>,
-            "fill": "<hex color>",
-            "stroke": "<hex color>",
-            "stroke_width": <number>,
-            "content": "<text>",
-            "font_size": <number 48-96>,
-            "text_anchor": "<start|middle|end>",
-            "fill_percent": <0-100>,
-            "fill_color": "<hex>",
-            "remaining_color": "<hex>",
-            "year_label": "<string>",
-            "ground_color": "<hex>",
-            "border_radius": <number>,
-            "opacity": <0.0-1.0>,
-            "from_x": <number>,
-            "from_y": <number>,
-            "to_x": <number>,
-            "to_y": <number>,
-            "control_x": <number>,
-            "control_y": <number>,
-            "shape": "<star|cross|zigzag>",
-            "rows": <number>,
-            "cols": <number>,
-            "dot_r": <number>,
-            "spacing_x": <number>,
-            "spacing_y": <number>
-          }}
-        ]
-      },
+      "background": {{"bg_color": "<hex color>"}},
       "props": [],  // STRING ARRAY ONLY: ["BrainProp"] or ["SkullProp"] or []. NEVER objects.
       "prop_position": "right_of_character",
       "num_characters": 1,
@@ -515,49 +401,20 @@ The JSON must have EXACTLY these keys:
   ]
 }
 
-AVAILABLE BACKGROUND ELEMENT TYPES (all positions as x_percent/y_percent 0-100 of 1920x1080 canvas):
-- "rect": filled/stroked rectangle. Use for walls, windows, doors, frames, signs, furniture, tables.
-- "circle": filled/stroked circle/ellipse. Use for sun, moon, lamps, decorative dots, spotlights.
-- "text": text rendered in Patrick Hand font. Use for titles, year labels, signs, stats, chalkboard writing, labels.
-- "line": straight/wobbly line. Use for floor lines, horizon, shelves, table edges, borders, dividers.
-- "path": custom SVG path string. Use for mountains, waves, abstract shapes, curves.
-- "polygon": multi-point shape. Use for arrows, triangles, diamonds, abstract geometric decors.
-- "timeline_bar": progress bar with year label. Use for historical timelines.
-- "ground": fills from y_percent to bottom of screen. Use for floor, grass, ground.
-- "curve": quadratic bezier curve defined by from_x/y, to_x/y, control_x/y. Use for banners, decorative arcs.
-- "decoration": decorative shapes. Set shape="star" | "cross" | "zigzag", positioned by cx/cy/r.
-- "dotted": dot pattern grid. rows, cols, dot_r, spacing_x/y, x_percent/y_percent as top-left.
-- "grid": grid lines pattern. rows, cols, spacing_x/y, x_percent/y_percent as top-left.
-
-DESIGN RULES:
-1. Every scene MUST have 3-8 elements minimum. More elements = richer visuals.
-2. Vary bg_color between scenes — dark (#1A1A1A, #2F2F2F) for dramatic moments, warm (#F5ECD7, #E8D5B7) for storytelling, blue (#D4E8F0) for calm, green (#4A6741) for nature.
-3. Always add at least: background wall rect (full screen fill), a floor or ground line, decorative elements.
-4. Use text elements with font_size 48-96 for titles and key numbers.
-5. Add decorative dotted patterns or grid lines in background at low opacity (0.05-0.15) for texture.
-6. Add curve elements for banners, arches, decorative flourishes.
-7. Add star/cross decorations at low opacity for visual interest.
-8. Color palette: stroke=#1A1A1A always. Fills: warm creams (#FFF8F2, #F5ECD7, #E8D5B7), earth (#8B6914, #A0522D), deep (#2F4F4F, #1A1A1A), accent (#FF6B35, #4A6741, #D4E8F0).
-
-EXAMPLE SCENE BY TYPE:
-- character_solo in dark room: {"bg_color":"#F5ECD7","elements":[{"type":"rect","x_percent":0,"y_percent":0,"width_percent":100,"height_percent":100,"fill":"#FFF8F2"},{"type":"dotted","x_percent":2,"y_percent":5,"rows":12,"cols":16,"dot_r":0.2,"spacing_x":6,"spacing_y":5,"opacity":0.08},{"type":"line","x1_percent":0,"y1_percent":75,"x2_percent":100,"y2_percent":75,"stroke":"#1A1A1A","stroke_width":3}]}
-- character_in_room (cave): {"bg_color":"#2F2F2F","elements":[{"type":"rect","x_percent":0,"y_percent":0,"width_percent":100,"height_percent":100,"fill":"#1A1A1A"},{"type":"rect","x_percent":5,"y_percent":5,"width_percent":90,"height_percent":60,"fill":"#2F2F2F","stroke":"#1A1A1A","stroke_width":3,"border_radius":16},{"type":"ground","y_percent":65,"ground_color":"#3D2B1F"},{"type":"text","x_percent":50,"y_percent":10,"content":"CAVE","font_size":48,"text_anchor":"middle","fill":"#FFFFFF"},{"type":"decoration","cx_percent":15,"cy_percent":20,"r_percent":1.5,"fill":"#FFFFFF","opacity":0.15,"shape":"star"},{"type":"decoration","cx_percent":85,"cy_percent":25,"r_percent":1,"fill":"#FFFFFF","opacity":0.1,"shape":"star"}]}
-- character_in_room (office): {"bg_color":"#F5F0E8","elements":[{"type":"rect","x_percent":0,"y_percent":0,"width_percent":100,"height_percent":100,"fill":"#F5F0E8"},{"type":"dotted","x_percent":3,"y_percent":3,"rows":10,"cols":15,"dot_r":0.15,"spacing_x":6,"spacing_y":6,"opacity":0.06},{"type":"rect","x_percent":65,"y_percent":8,"width_percent":28,"height_percent":35,"fill":"#D4E8F0","stroke":"#1A1A1A","stroke_width":2,"border_radius":4},{"type":"line","x1_percent":60,"y1_percent":25,"x2_percent":60,"y2_percent":38,"stroke":"#1A1A1A","stroke_width":2},{"type":"rect","x_percent":10,"y_percent":52,"width_percent":80,"height_percent":6,"fill":"#8B6914","stroke":"#1A1A1A","stroke_width":2},{"type":"line","x1_percent":0,"y1_percent":70,"x2_percent":100,"y2_percent":70,"stroke":"#1A1A1A","stroke_width":3},{"type":"curve","from_x":80,"from_y":50,"to_x":95,"to_y":50,"control_x":87,"control_y":35,"stroke":"#1A1A1A","stroke_width":2,"opacity":0.3}]}
-- timeline_scene: {"bg_color":"#F5ECD7","elements":[{"type":"dotted","x_percent":0,"y_percent":0,"rows":8,"cols":12,"dot_r":0.2,"spacing_x":8,"spacing_y":8,"opacity":0.05},{"type":"timeline_bar","fill_percent":42,"fill_color":"#8B4513","remaining_color":"#D4C9A8","year_label":"1957"},{"type":"text","x_percent":50,"y_percent":65,"content":"Timeline","font_size":48,"text_anchor":"middle"}]}
-- character_explaining (chalkboard): {"bg_color":"#F5ECD7","elements":[{"type":"rect","x_percent":0,"y_percent":0,"width_percent":100,"height_percent":100,"fill":"#F5ECD7"},{"type":"dotted","x_percent":2,"y_percent":2,"rows":6,"cols":10,"dot_r":0.2,"spacing_x":9,"spacing_y":9,"opacity":0.08},{"type":"rect","x_percent":12,"y_percent":5,"width_percent":76,"height_percent":55,"fill":"#2F4F4F","stroke":"#1A1A1A","stroke_width":3,"border_radius":8},{"type":"text","x_percent":50,"y_percent":20,"content":"THE AMYGDALA","font_size":56,"text_anchor":"middle","fill":"#FFFFFF"},{"type":"text","x_percent":50,"y_percent":35,"content":"\"Fear Center\"","font_size":40,"text_anchor":"middle","fill":"#E8D5B7"},{"type":"line","x1_percent":0,"y1_percent":72,"x2_percent":100,"y2_percent":72,"stroke":"#1A1A1A","stroke_width":3},{"type":"ground","y_percent":72,"ground_color":"#3D2B1F"}]}
-- text_focus (stat): {"bg_color":"#1A1A1A","elements":[{"type":"rect","x_percent":0,"y_percent":0,"width_percent":100,"height_percent":100,"fill":"#1A1A1A"},{"type":"rect","x_percent":12,"y_percent":18,"width_percent":76,"height_percent":64,"fill":"#FFF8F2","stroke":"#1A1A1A","stroke_width":3,"border_radius":16},{"type":"text","x_percent":50,"y_percent":42,"content":"90%","font_size":120,"text_anchor":"middle"},{"type":"text","x_percent":50,"y_percent":60,"content":"of decisions are subconscious","font_size":40,"text_anchor":"middle"},{"type":"decoration","cx_percent":30,"cy_percent":35,"r_percent":2,"fill":"#1A1A1A","opacity":0.1,"shape":"star"},{"type":"decoration","cx_percent":70,"cy_percent":35,"r_percent":2,"fill":"#1A1A1A","opacity":0.1,"shape":"star"}]}
-- two_characters: {"bg_color":"#F5ECD7","elements":[{"type":"rect","x_percent":0,"y_percent":0,"width_percent":100,"height_percent":100,"fill":"#F5ECD7"},{"type":"grid","x_percent":0,"y_percent":0,"rows":8,"cols":12,"spacing_x":8,"spacing_y":7,"opacity":0.04},{"type":"rect","x_percent":30,"y_percent":55,"width_percent":40,"height_percent":10,"fill":"#8B6914","stroke":"#1A1A1A","stroke_width":2,"border_radius":4},{"type":"line","x1_percent":0,"y1_percent":75,"x2_percent":100,"y2_percent":75,"stroke":"#1A1A1A","stroke_width":3},{"type":"curve","from_x":10,"from_y":30,"to_x":90,"to_y":30,"control_x":50,"control_y":15,"stroke":"#1A1A1A","stroke_width":1.5,"opacity":0.15}]}
-- outdoor: {"bg_color":"#D4E8F0","elements":[{"type":"rect","x_percent":0,"y_percent":0,"width_percent":100,"height_percent":100,"fill":"#D4E8F0"},{"type":"circle","cx_percent":82,"cy_percent":14,"r_percent":7,"fill":"#FFD700","stroke":"#1A1A1A","stroke_width":2},{"type":"ground","y_percent":68,"ground_color":"#7CB342"},{"type":"line","x1_percent":0,"y1_percent":68,"x2_percent":100,"y2_percent":68,"stroke":"#1A1A1A","stroke_width":3},{"type":"curve","from_x":10,"from_y":40,"to_x":40,"to_y":40,"control_x":25,"control_y":25,"stroke":"#4A6741","stroke_width":2,"opacity":0.3},{"type":"decoration","cx_percent":50,"cy_percent":50,"r_percent":1,"fill":"#1A1A1A","opacity":0.08,"shape":"star"}]}
-
 CINEMATIC RULES:
-1. Each scene = 1 rich SVG illustration. Always include 4-8 background elements for visual richness.
-2. voiceover_text: exactly from script, 1-3 sentences max.
-3. SCENE TYPES: character_solo (narration, use dotted background), character_with_prop (shocking facts, use prop), text_focus (stats, large text), character_explaining (chalkboard/teaching), timeline_scene (timeline_bar), two_characters (emotional dialogue), character_in_room (rich room environment).
-4. BACKGROUND: MUST include: background fill rect + ground or floor line + 2-6 decorative elements (dotted, grid, curves, decorations). Rich, layered, visually interesting.
-5. PROPS: ["SkullProp"] ["FireProp"] ["BrainProp"] ["ClockProp"] ["HeartProp"] ["QuestionMarkProp"] ["BookProp"] ["MirrorProp"] ["ChainProp"] — STRINGS ONLY in array.
-6. motion_type: cycle, never repeat 2 in a row.
-7. character_expression must match emotional tone.
-8. NO DURATION — set 0, real duration from audio.
+1. voiceover_text: exactly from script, 1-3 sentences max. Cover the ENTIRE script word for word.
+2. SCENE TYPES: character_solo (narration), character_with_prop (shocking facts, use prop),
+   text_focus (stats, large text), character_explaining (chalkboard/teaching), timeline_scene,
+   two_characters (emotional dialogue), character_in_room (rich room environment).
+3. bg_color palette — vary across scenes: #F5ECD7 warm cream, #1A1A1A dark charcoal,
+   #2F4F4F deep teal, #F5F0E8 light cream, #D4E8F0 pale blue, #2C1810 deep brown,
+   #D4AF37 warm gold, #8B0000 dark red, #FFFFFF white, #0F0F0F near black.
+4. PROPS: ["SkullProp"] ["FireProp"] ["BrainProp"] ["ClockProp"] ["HeartProp"]
+   ["QuestionMarkProp"] ["BookProp"] ["MirrorProp"] ["ChainProp"] — STRINGS ONLY in array.
+5. motion_type: cycle, never repeat 2 in a row.
+6. character_expression must match emotional tone.
+7. NO DURATION — set 0, real duration from audio.
+8. MINIMAL SCHEMA — do not add any extra keys to scenes. No elements, no decorations, no SVG.
 """
 
 
