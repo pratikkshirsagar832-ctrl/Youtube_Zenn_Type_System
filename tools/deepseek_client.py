@@ -248,7 +248,7 @@ async def enhance_script(user_script: str, duration_minutes: int,
         f"Target duration: {duration_minutes} minutes ({target}s)\n\n"
         "Produce the enhanced script + scene plan JSON now."
     )
-    data = await _call(
+    data = _call(
         model=DEEPSEEK_MODEL_CHAT,
         system=system,
         user=user,
@@ -379,7 +379,7 @@ async def write_script(research_brief: dict, duration_minutes: int, niche: str,
         f"Niche: {niche}\nDuration: {duration_minutes} minutes (target {target}s)\n\n"
         "Produce the script JSON now."
     )
-    result = await _call(
+    result = _call(
         model=DEEPSEEK_MODEL_CHAT,
         system=system,
         user=user,
