@@ -273,7 +273,7 @@ async def run_research(topic: str, niche: str,
         model=DEEPSEEK_MODEL_REASONING,
         system=system_prompt_override or RESEARCH_SYSTEM,
         user=user,
-        max_tokens=4000,
+        max_tokens=8000,
         temperature=0.4,
     )
 
