@@ -72,6 +72,20 @@ def _get_wav_duration(path: str) -> float:
         return 0.0
 
 
+def _piper_cli() -> str:
+    """Resolve the piper CLI: prefer the venv sibling of sys.executable, else PATH."""
+    venv_piper = Path(sys.executable).parent / "piper"
+    if venv_piper.exists():
+        return str(venv_piper)
+    found = shutil.which("piper")
+    if found:
+        return found
+    raise RuntimeError(
+        "piper CLI not found. Install with: pip install piper-tts\n"
+        "Then verify: piper --help"
+    )
+
+
 def generate_voiceover(sections: list[dict], output_path: str) -> dict:
     """Generate a single WAV from concatenated sections.
 
@@ -84,11 +98,7 @@ def generate_voiceover(sections: list[dict], output_path: str) -> dict:
     """
     _check_model()
 
-    if not shutil.which("piper"):
-        raise RuntimeError(
-            "piper CLI not found. Install with: pip install piper-tts\n"
-            "Then verify: piper --help"
-        )
+    piper_cli = _piper_cli()
 
     Path(output_path).parent.mkdir(parents=True, exist_ok=True)
 
@@ -97,7 +107,7 @@ def generate_voiceover(sections: list[dict], output_path: str) -> dict:
         raise ValueError("All sections have empty voiceover_text")
 
     cmd = [
-        "piper",
+        piper_cli,
         "--model", PIPER_MODEL_PATH,
         "--config", PIPER_CONFIG_PATH,
         "--output_file", output_path,
