@@ -210,6 +210,34 @@ CRITICAL RULES:
 """
 
 
+async def _normalize_script_durations(data: dict, target_seconds: int) -> dict:
+    """Rescale section durations so total_estimated_seconds lands on target."""
+    sections = data.get("sections") or []
+    if not sections:
+        return data
+    current = sum(s.get("estimated_duration_seconds", 0) for s in sections)
+    if current <= 0:
+        return data
+    scale = target_seconds / current
+    new_sections = []
+    total = 0
+    for s in sections:
+        d = max(30, round(s.get("estimated_duration_seconds", 30) * scale))
+        new_sections.append({**s, "estimated_duration_seconds": d})
+        total += d
+    drift = target_seconds - total
+    if drift != 0:
+        i = max(range(len(new_sections)), key=lambda i: new_sections[i]["estimated_duration_seconds"])
+        new_sections[i]["estimated_duration_seconds"] = max(
+            30, new_sections[i]["estimated_duration_seconds"] + drift
+        )
+    data["sections"] = new_sections
+    data["total_estimated_seconds"] = sum(
+        s["estimated_duration_seconds"] for s in new_sections
+    )
+    return data
+
+
 async def enhance_script(user_script: str, duration_minutes: int,
                          system_prompt_override: str | None = None) -> dict:
     """One-call enhancement: raw user script → structured script + full scene plan."""
@@ -220,13 +248,14 @@ async def enhance_script(user_script: str, duration_minutes: int,
         f"Target duration: {duration_minutes} minutes ({target}s)\n\n"
         "Produce the enhanced script + scene plan JSON now."
     )
-    return _call(
+    data = await _call(
         model=DEEPSEEK_MODEL_CHAT,
         system=system,
         user=user,
         max_tokens=8000,
         temperature=0.5,
     )
+    return await _normalize_script_durations(data, target)
 
 
 # ============================================================
@@ -350,7 +379,7 @@ async def write_script(research_brief: dict, duration_minutes: int, niche: str,
         f"Niche: {niche}\nDuration: {duration_minutes} minutes (target {target}s)\n\n"
         "Produce the script JSON now."
     )
-    result = _call(
+    result = await _call(
         model=DEEPSEEK_MODEL_CHAT,
         system=system,
         user=user,
@@ -359,7 +388,7 @@ async def write_script(research_brief: dict, duration_minutes: int, niche: str,
     )
     if isinstance(result, dict) and "title" in result:
         result["title"] = result["title"][:70]
-    return result
+    return await _normalize_script_durations(result, target)
 
 
 # ============================================================
