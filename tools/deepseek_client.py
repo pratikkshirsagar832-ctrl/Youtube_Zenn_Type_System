@@ -351,7 +351,10 @@ CRITICAL RULES:
 
 2. Every claim cites real research (researcher + year). NEVER invent studies.
 
-3. Word count: 1000-1200 for 7-8 min, 800-1000 for 5-6 min. (Piper ~150 wpm.)
+3. Word count: EXACTLY {word_target} words for {duration_minutes} minutes. Piper
+   TTS speaks at ~200 words per minute, so 5 min = 1000 words, 8 min = 1600 words,
+   9 min = 1800 words. Never come short — use depth, stories and research detail.
+   ±10% is allowed. Count your words before finishing.
 
 4. Vary sentence length (burstiness). Short punchy + long flowing.
 
@@ -379,24 +382,51 @@ async def write_script(research_brief: dict, duration_minutes: int, niche: str,
                        system_prompt_override: str | None = None) -> dict:
     """Write a {duration_minutes}-minute script with DeepSeek V3."""
     target = duration_minutes * 60
+    word_target = duration_minutes * 200
     system = (system_prompt_override or SCRIPT_SYSTEM)
     system = system.replace("{duration_minutes}", str(duration_minutes))
     system = system.replace("{target_seconds}", str(target))
+    system = system.replace("{word_target}", str(word_target))
     user = (
         f"Research brief:\n{json.dumps(research_brief, indent=2)}\n\n"
-        f"Niche: {niche}\nDuration: {duration_minutes} minutes (target {target}s)\n\n"
+        f"Niche: {niche}\nDuration: {duration_minutes} minutes (target {target}s, "
+        f"{word_target} words)\n\n"
         "Produce the script JSON now."
     )
+
+    def _finalize(data: dict) -> dict:
+        if isinstance(data, dict) and "title" in data:
+            data["title"] = data["title"][:70]
+        return data
+
     result = _call(
         model=DEEPSEEK_MODEL_CHAT,
         system=system,
         user=user,
-        max_tokens=6000,
+        max_tokens=12000,
         temperature=0.7,
     )
-    if isinstance(result, dict) and "title" in result:
-        result["title"] = result["title"][:70]
-    return await _normalize_script_durations(result, target)
+    result = _finalize(result)
+    result = await _normalize_script_durations(result, target)
+
+    words = sum(len(s.get("voiceover_text", "").split()) for s in result.get("sections", []))
+    if words < int(duration_minutes * 170):
+        print(f"[deepseek] script only {words} words (need >= {duration_minutes * 170}) — re-calling once", flush=True)
+        nudge = (
+            f"{user}\n\nWARNING: your script was only {words} words. The video would be "
+            f"too short. Rewrite with AT LEAST {word_target} words. Expand every section "
+            f"with deeper research, stories, and detail. Keep the same JSON structure."
+        )
+        result = _call(
+            model=DEEPSEEK_MODEL_CHAT,
+            system=system,
+            user=nudge,
+            max_tokens=16000,
+            temperature=0.7,
+        )
+        result = _finalize(result)
+        result = await _normalize_script_durations(result, target)
+    return result
 
 
 # ============================================================

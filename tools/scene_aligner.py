@@ -102,32 +102,40 @@ def _scene_transcript_ranges(scene_of: list[int], mapped: list[int | None],
 
 
 def _split_by_duration(scene: dict, words: list[dict]) -> list[dict]:
-    """Split one scene into <=MAX chunks at word boundaries. Returns list of scenes."""
-    dur = max(PIPELINE_MIN_SHOT_DURATION_S,
-              words[-1]["end"] - words[0]["start"] if words else PIPELINE_MIN_SHOT_DURATION_S)
+    """Split one scene into <=MAX time chunks at word boundaries. Returns list of scenes."""
+    if not words:
+        scene["duration_seconds"] = round(PIPELINE_MIN_SHOT_DURATION_S, 3)
+        return [scene]
+    dur = max(PIPELINE_MIN_SHOT_DURATION_S, words[-1]["end"] - words[0]["start"])
     if dur <= PIPELINE_MAX_SHOT_DURATION_S:
         scene["duration_seconds"] = round(dur, 3)
         return [scene]
 
-    n = max(2, round(dur / PIPELINE_MAX_SHOT_DURATION_S))
-    target = dur / n
-    chunks: list[list[dict]] = [[] for _ in range(n)]
-    base_start = words[0]["start"]
+    # Greedy TIME-based chunking: pack words until adding the next word would
+    # push the chunk past the cap, then start a new chunk. Chunking by word
+    # index alone fails when Whisper words cluster with silence gaps.
+    chunks: list[list[dict]] = []
+    cur: list[dict] = []
     for w in words:
-        idx = min(n - 1, int((w["start"] - base_start) / target))
-        chunks[idx].append(w)
+        if cur and (w["end"] - cur[0]["start"]) > PIPELINE_MAX_SHOT_DURATION_S:
+            chunks.append(cur)
+            cur = []
+        cur.append(w)
+    if cur:
+        chunks.append(cur)
 
     out = []
     for ch in chunks:
-        if not ch:
-            continue
         piece = dict(scene)
         piece["subtitle_words"] = ch
+        span = ch[-1]["end"] - ch[0]["start"]
+        # Clamp so the shot-duration contract is never violated (a single
+        # word may span a long silence gap).
         piece["duration_seconds"] = round(
-            max(PIPELINE_MIN_SHOT_DURATION_S, ch[-1]["end"] - ch[0]["start"]), 3
+            max(PIPELINE_MIN_SHOT_DURATION_S, min(PIPELINE_MAX_SHOT_DURATION_S, span)), 3
         )
         out.append(piece)
-    return out or [scene]
+    return out
 
 
 def build_aligned_scenes(scene_plan: dict, word_timestamps: dict,
