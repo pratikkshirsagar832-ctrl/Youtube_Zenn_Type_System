@@ -289,7 +289,7 @@ OUTPUT: Valid JSON only. Start with { and end with }.
 
 The JSON must have EXACTLY these keys:
 {
-  "title": "<max 70 chars, hook-forward, no clickbait>",
+  "title": "<STRICTLY at most 70 characters total — hard rule, never exceed>",
   "description": "<max 500 chars, 1-2 paragraphs>",
   "tags": ["<tag 1>", "..." (min 10, max 15)],
   "hook": "<the first 2-3 sentences, max 200 chars, present-tense sensory moment>",
@@ -350,13 +350,16 @@ async def write_script(research_brief: dict, duration_minutes: int, niche: str,
         f"Niche: {niche}\nDuration: {duration_minutes} minutes (target {target}s)\n\n"
         "Produce the script JSON now."
     )
-    return _call(
+    result = _call(
         model=DEEPSEEK_MODEL_CHAT,
         system=system,
         user=user,
         max_tokens=6000,
         temperature=0.7,
     )
+    if isinstance(result, dict) and "title" in result:
+        result["title"] = result["title"][:70]
+    return result
 
 
 # ============================================================
