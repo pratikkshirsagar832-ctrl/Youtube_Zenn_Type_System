@@ -23,6 +23,9 @@ pydub>=0.25.1
 # Word timestamps (Groq Whisper API — no local model)
 # Uses openai SDK (already required above) — no extra deps needed.
 
+# Reference-mode transcripts (YouTube auto-captions)
+yt-dlp>=2024.0.0
+
 # Schema validation
 pydantic>=2.6.0
 

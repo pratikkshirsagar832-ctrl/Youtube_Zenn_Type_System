@@ -55,9 +55,9 @@ def _normalize_for_piper(text: str) -> str:
         if has_pause:
             result.append(s)
         else:
-            # Add a pause after most sentences for natural rhythm
-            pause = "..." if i % 3 != 0 else "..."
-            result.append(s + pause)
+            # Add a short pause after every sentence for natural rhythm;
+            # the script's own "..." / "—" markers carry the longer beats.
+            result.append(s + "...")
 
     return " ".join(result)
 

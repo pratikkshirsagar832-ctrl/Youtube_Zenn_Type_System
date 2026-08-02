@@ -58,15 +58,34 @@ REMOTION_COMPOSITION = _get("REMOTION_COMPOSITION", "NexusVideo")
 REMOTION_OUTPUT_DIR = str(PROJECT_ROOT / _get("REMOTION_OUTPUT_DIR", "./projects").lstrip("./"))
 CHROME_EXECUTABLE = _get("CHROME_EXECUTABLE", "C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe")
 
+# --- Pollinations (image generation) ---
+POLLINATIONS_BASE_URL = _get("POLLINATIONS_BASE_URL", "https://gen.pollinations.ai/image/")
+POLLINATIONS_API_KEY = _get("POLLINATIONS_API_KEY", "")
+POLLINATIONS_MODEL = _get("POLLINATIONS_MODEL", "z-image-turbo")
+POLLINATIONS_WIDTH = _get_int("POLLINATIONS_WIDTH", 1920)
+POLLINATIONS_HEIGHT = _get_int("POLLINATIONS_HEIGHT", 1080)
+# img2img strength: lower = closer to the character reference shape
+POLLINATIONS_IMG2IMG_STRENGTH = _get_float("POLLINATIONS_IMG2IMG_STRENGTH", 0.6)
+POLLINATIONS_QUALITY = _get("POLLINATIONS_QUALITY", "high")
+# Master character reference image. If the file exists it is used as the
+# anchor for every scene (img2img); otherwise one is generated.
+REFERENCE_IMAGE_PATH = _get("REFERENCE_IMAGE_PATH", str(PROJECT_ROOT / "Referencs.png"))
+
 # --- Pipeline ---
 PIPELINE_MIN_SHOT_DURATION_S = _get_float("PIPELINE_MIN_SHOT_DURATION_S", 1.0)
 PIPELINE_MAX_SHOT_DURATION_S = _get_float("PIPELINE_MAX_SHOT_DURATION_S", 10.0)
 PIPELINE_DEFAULT_FPS = _get_int("PIPELINE_DEFAULT_FPS", 30)
+PIPELINE_PARALLEL_IMAGE_REQUESTS = _get_int("PIPELINE_PARALLEL_IMAGE_REQUESTS", 3)
+PIPELINE_IMAGE_RETRY_ATTEMPTS = _get_int("PIPELINE_IMAGE_RETRY_ATTEMPTS", 3)
+PIPELINE_IMAGE_RETRY_WAIT_S = _get_float("PIPELINE_IMAGE_RETRY_WAIT_S", 3.0)
 
 # --- Server ---
 BACKEND_HOST = _get("BACKEND_HOST", "0.0.0.0")
 BACKEND_PORT = _get_int("BACKEND_PORT", 8000)
 FRONTEND_URL = _get("FRONTEND_URL", "http://localhost:3000")
+
+# --- Optional API auth (off by default; requires X-API-Key header when set) ---
+AUTH_TOKEN = _get("AUTH_TOKEN", "")
 
 # --- Project paths ---
 PROJECTS_DIR = PROJECT_ROOT / "projects"

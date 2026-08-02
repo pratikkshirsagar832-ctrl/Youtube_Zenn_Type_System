@@ -6,19 +6,11 @@ import { SubtitleWord } from "./SubtitleLayer";
 export interface NexusScene {
   scene_id: number;
   duration_seconds: number;
-  scene_type: string;
-  character_expression: string;
-  character_position: string;
-  character_animation: string;
-  background: {
-    bg_color: string;
-    elements: Array<Record<string, unknown>>;
-  };
-  props: string[];
-  prop_position: string;
-  num_characters: number;
+  image_path: string;
   motion_type: string;
+  subtitle_keyword: string;
   subtitle_words: SubtitleWord[];
+  [key: string]: unknown;
 }
 
 export interface NexusAudio {

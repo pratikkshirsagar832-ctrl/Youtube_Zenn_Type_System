@@ -8,7 +8,7 @@ const calculateNexusMetadata: CalculateMetadataFunction<NexusVideoProps> = async
   props,
 }) => {
   const total = props.total_duration_seconds || 0;
-  return { durationInFrames: Math.ceil((total + 1) * 30) };
+  return { durationInFrames: Math.ceil(total * 30) };
 };
 
 export const Root: React.FC = () => {

@@ -47,6 +47,7 @@ def slice_scenes(edit_decisions: dict) -> dict:
         parent_voiceover_text = sc.get("voiceover_text", "")
         parent_words = sc.get("subtitle_words", [])
         parent_start = sc.get("start_time", 0.0)
+        parent_image = sc.get("image_path", "")
 
         for ci in range(num_chunks):
             chunk_start = chunk_dur * ci
@@ -78,6 +79,7 @@ def slice_scenes(edit_decisions: dict) -> dict:
                 "start_time": round(abs_start, 3),
                 "duration_seconds": round(chunk_dur, 3),
                 "end_time": round(abs_end, 3),
+                "image_path": parent_image,
                 "scene_type": sc.get("scene_type", "character_solo"),
                 "character_expression": parent_expr,
                 "character_position": parent_pos,

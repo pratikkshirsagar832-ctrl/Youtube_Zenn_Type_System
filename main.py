@@ -28,6 +28,7 @@ from config import (
     BACKEND_PORT,
     FRONTEND_URL,
     PROJECTS_DIR,
+    AUTH_TOKEN,
     is_fully_configured,
     DEFAULT_DURATION_MINUTES,
     DEFAULT_NICHE,
@@ -38,7 +39,7 @@ from pipeline import run_pipeline, PipelineInput
 # --- App ---
 app = FastAPI(
     title="Nexus — Autonomous YouTube Video Factory",
-    version="1.0.0",
+    version="1.1.0",
     description="Minimal FastAPI server for the Nexus pipeline.",
 )
 
@@ -50,11 +51,21 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+if AUTH_TOKEN:
+    @app.middleware("http")
+    async def api_auth(request, call_next):
+        """Optional auth: when AUTH_TOKEN is set, require X-API-Key on /api/* (health exempt)."""
+        path = request.url.path
+        if path.startswith("/api/") and path != "/api/health":
+            if request.headers.get("x-api-key") != AUTH_TOKEN:
+                return JSONResponse({"detail": "Unauthorized"}, status_code=401)
+        return await call_next(request)
+
 
 # --- Request / Response models ---
 class GenerateRequest(BaseModel):
     input: str = Field(..., description="Topic text, YouTube URL, or full script (auto-detected)")
-    duration_minutes: int = Field(DEFAULT_DURATION_MINUTES, ge=5, le=8, description="5, 6, 7, or 8 minutes")
+    duration_minutes: int = Field(DEFAULT_DURATION_MINUTES, ge=5, le=12, description="5-12 minutes")
     niche: str = Field(DEFAULT_NICHE, description="One of: " + ", ".join(VALID_NICHES))
     force_mode: str | None = Field(None, description="'topic' | 'reference' | 'script' (auto-detect if None)")
 
@@ -84,7 +95,9 @@ class ProjectSummary(BaseModel):
 def _detect_mode(text: str) -> str:
     """Auto-detect whether the input is a topic, YouTube URL, or full script."""
     t = text.strip()
-    if "youtube.com/watch?v=" in t or "youtu.be/" in t:
+    low = t.lower()
+    if ("youtube.com/watch" in low or "youtu.be/" in low
+            or ("youtube.com" in low and "v=" in low)):
         return "reference"
     if len(t.split()) > 100:
         return "script"
@@ -122,6 +135,7 @@ async def _run_pipeline_background(project_id: str, inp: PipelineInput) -> None:
         meta = _load_project_metadata(project_id) or {}
         meta.update({
             "project_id": project_id,
+            "status": "running",
             "current_stage": stage,
             "progress": progress,
             "last_message": message,
@@ -153,6 +167,24 @@ async def _run_pipeline_background(project_id: str, inp: PipelineInput) -> None:
         _save_project_metadata(project_id, meta)
 
 
+def _mark_stale_projects_failed() -> None:
+    """On boot, fail projects orphaned by a previous server shutdown."""
+    for p in PROJECTS_DIR.iterdir():
+        if not p.is_dir():
+            continue
+        meta = _load_project_metadata(p.name)
+        if meta and meta.get("status") in ("queued", "running"):
+            meta.update({
+                "status": "failed",
+                "error": "Server restarted before the pipeline finished. Re-run the request.",
+                "failed_at": datetime.utcnow().isoformat() + "Z",
+            })
+            _save_project_metadata(p.name, meta)
+
+
+app.router.add_event_handler("startup", _mark_stale_projects_failed)
+
+
 # --- Serve frontend ---
 FRONTEND_DIR = Path(__file__).resolve().parent / "frontend"
 app.mount("/static", StaticFiles(directory=str(FRONTEND_DIR)), name="frontend")
@@ -178,6 +210,8 @@ async def health() -> dict:
 async def generate(req: GenerateRequest, background: BackgroundTasks) -> GenerateResponse:
     if req.niche not in VALID_NICHES:
         raise HTTPException(400, f"Invalid niche. Use one of: {VALID_NICHES}")
+    if req.force_mode not in (None, "topic", "reference", "script"):
+        raise HTTPException(400, "force_mode must be one of: topic, reference, script")
 
     mode = req.force_mode or _detect_mode(req.input)
     project_id = uuid.uuid4().hex[:12]
@@ -185,7 +219,7 @@ async def generate(req: GenerateRequest, background: BackgroundTasks) -> Generat
 
     metadata = {
         "project_id": project_id,
-        "topic": req.input[:200] if mode == "topic" else (req.input if mode == "script" else req.input),
+        "topic": req.input[:200],
         "mode": mode,
         "niche": req.niche,
         "duration_minutes": req.duration_minutes,

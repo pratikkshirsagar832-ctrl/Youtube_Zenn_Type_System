@@ -1,7 +1,7 @@
 """Full end-to-end pipeline smoke test.
 
 Runs all stages with a SHORT test script (1 minute) so it finishes quickly.
-No image generation — all visuals are SVG rendered by Remotion.
+Visuals: Pollinations-generated images, animated by Remotion (Ken Burns).
 """
 import sys
 import json
@@ -96,9 +96,25 @@ async def go():
         print(f"    | scene {s['scene_id']:03d}: {s['duration_seconds']:.2f}s | type={s['scene_type']} | bg={bg_info.get('bg_color','?')} | expr={s['character_expression']} | {len(s['subtitle_words'])} words")
     (project_dir / "edit_decisions.json").write_text(json.dumps(edit, indent=2))
 
+    # ============== Images (Pollinations) ==============
+    banner("STAGE — Scene Images (Pollinations)")
+    from tools.pollinations_image import generate_scene_images
+    paths = await generate_scene_images(
+        scenes=edit["scenes"],
+        output_dir=str(project_dir / "images"),
+        slug=project_id,
+    )
+    ref = project_dir / "images" / "character_ref.jpg"
+    print(f"OK | images generated: {len(paths)}")
+    if ref.exists():
+        print(f"    | character reference: {ref}")
+    for p in paths[:3]:
+        print(f"    | {p}")
+
     banner("END-TO-END SUCCESS")
     print(f"\nProject dir: {project_dir}")
     print(f"Edit decisions: {project_dir / 'edit_decisions.json'}")
+    print(f"Scene images: {project_dir / 'images'}")
     print(f"Next step: render with Remotion (npx remotion render NexusVideo <out>)")
 
 

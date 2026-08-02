@@ -170,6 +170,7 @@ class AudioConfig(BaseModel):
 class EditScene(BaseModel):
     scene_id: int
     duration_seconds: float = Field(ge=PIPELINE_MIN_SHOT_DURATION_S, le=PIPELINE_MAX_SHOT_DURATION_S)
+    image_path: str = ""
     scene_type: str = "character_solo"
     character_expression: str = "neutral"
     character_position: str = "center"

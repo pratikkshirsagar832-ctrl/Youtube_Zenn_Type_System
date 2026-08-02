@@ -40,7 +40,15 @@ def render_video(project_id: str, edit_decisions: dict, output_path: str) -> dic
         for f in src_audio.glob("*.wav"):
             shutil.copy(f, target_audio / f.name)
 
-    # Rewrite edit_decisions.json to use public/{slug}/ paths for audio
+    # Copy scene images
+    src_images = project_dir / "images"
+    target_images = target_dir / "images"
+    if src_images.exists():
+        target_images.mkdir(parents=True, exist_ok=True)
+        for f in src_images.glob("*.jpg"):
+            shutil.copy(f, target_images / f.name)
+
+    # Rewrite edit_decisions.json to use public/{slug}/ paths for audio + images
     props = dict(edit_decisions)
     voiceover = props.get("audio", {}).get("voiceover", "")
     if voiceover:
@@ -48,6 +56,11 @@ def render_video(project_id: str, edit_decisions: dict, output_path: str) -> dic
             props["audio"]["voiceover"] = f"{topic_slug}/{voiceover}"
         else:
             props["audio"]["voiceover"] = f"{topic_slug}/audio/{Path(voiceover).name}"
+
+    for scene in props.get("scenes", []):
+        img = scene.get("image_path", "")
+        if img and not img.startswith(topic_slug + "/"):
+            scene["image_path"] = f"{topic_slug}/images/{Path(img).name}"
 
     props_path = target_dir / "props.json"
     props_path.write_text(json.dumps(props, indent=2), encoding="utf-8")

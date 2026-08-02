@@ -203,9 +203,20 @@
       <p>AI Video Production Studio</p>
     </div>
 
-    <textarea id="script-input" placeholder="Paste your full script here...
+    <textarea id="script-input" placeholder="Paste your full script, a topic, or a YouTube URL...
 
-The system will enhance it with DeepSeek, generate voiceover with Piper TTS, create images, and compose a professional video with Remotion."></textarea>
+Script: enhanced with DeepSeek, narrated with Piper TTS, visualized with Pollinations images, composed by Remotion."></textarea>
+
+    <div class="control-row">
+      <label for="duration-select">Video length</label>
+      <select id="duration-select">
+        <option value="5">5 minutes</option>
+        <option value="8" selected>8 minutes</option>
+        <option value="9">9 minutes</option>
+        <option value="10">10 minutes</option>
+        <option value="12">12 minutes</option>
+      </select>
+    </div>
 
     <button class="submit-btn" id="submit-btn" onclick="startGeneration()">GENERATE VIDEO</button>
 
@@ -299,7 +310,7 @@ const STEPS = [
   { id: 'stage_1_tts',     label: 'Generating voiceover (Piper TTS)' },
   { id: 'stage_2_whisper', label: 'Extracting word timestamps (Whisper)' },
   { id: 'stage_3_align',   label: 'Aligning words to scenes' },
-  { id: 'stage_4_images',  label: 'Generating stickman images' },
+  { id: 'stage_4_images',  label: 'Generating scene images (Pollinations)' },
   { id: 'stage_5_render',  label: 'Rendering video (Remotion)' },
   { id: 'complete',        label: 'Complete!' },
 ];
@@ -347,7 +358,7 @@ function startGeneration() {
   fetch('/api/generate', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ input: script, force_mode: 'script', duration_minutes: 8 }),
+    body: JSON.stringify({ input: script, force_mode: 'script', duration_minutes: parseInt(document.getElementById('duration-select').value, 10) }),
   })
   .then(r => r.json())
   .then(data => {
