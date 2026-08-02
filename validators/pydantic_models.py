@@ -92,7 +92,15 @@ class Scene(BaseModel):
         "two_characters"
     ] = "character_solo"
     character_expression: Literal[
-        "neutral", "curious", "shocked", "thinking", "sad", "confident", "scared", "confused"
+        "neutral", "curious", "shocked", "thinking", "sad", "confident", "scared",
+        "confused", "happy", "angry", "worried", "serious", "determined",
+        "excited", "calm", "surprised", "anxious", "guilty", "suspicious",
+        "sympathetic", "bored", "hopeful", "doubtful", "focused", "skeptical",
+        "upset", "proud", "ashamed", "lonely", "tempted", "frustrated",
+        "contemplative", "hesitant", "envious", "disappointed", "content",
+        "fearful", "puzzled", "amused", "impressed", "worriedly", "eager",
+        "relieved", "nervous", "resolute", "defeated", "empowered", "grateful",
+        "distressed", "intrigued"
     ] = "neutral"
     character_position: Literal["left", "center", "right"] = "center"
     character_animation: Literal[
