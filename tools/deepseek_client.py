@@ -24,7 +24,6 @@ from config import (
     DEEPSEEK_API_KEY,
     DEEPSEEK_BASE_URL,
     DEEPSEEK_MODEL_REASONING,
-    DEEPSEEK_MODEL_CHAT,
 )
 
 
@@ -53,10 +52,16 @@ def _extract_json(text: str) -> dict:
 
 def _call(model: str, system: str, user: str, max_tokens: int = 6000, temperature: float = 0.5,
           retries: int = 5) -> dict:
-    """Call DeepSeek and return parsed JSON dict. Retries on parse failure/empty content."""
+    """Call DeepSeek and return parsed JSON dict. Retries on parse failure/empty content.
+
+    For reasoning models (deepseek-reasoner) max_tokens includes the CoT, so a
+    finish_reason="length" truncates the final JSON — we react by doubling the
+    budget on the next attempt instead of giving up.
+    """
     import time as _time
     client = _client()
     last_err: Exception | None = None
+    current_max = max_tokens
     for attempt in range(1, retries + 1):
         try:
             resp = client.chat.completions.create(
@@ -65,7 +70,7 @@ def _call(model: str, system: str, user: str, max_tokens: int = 6000, temperatur
                     {"role": "system", "content": system},
                     {"role": "user", "content": user},
                 ],
-                max_tokens=max_tokens,
+                max_tokens=current_max,
                 temperature=temperature,
                 response_format={"type": "json_object"},
             )
@@ -75,6 +80,14 @@ def _call(model: str, system: str, user: str, max_tokens: int = 6000, temperatur
                 # DeepSeek R1 intermittently returns empty content under load
                 print(f"[deepseek] attempt {attempt}: empty content (finish={finish}) — retrying", flush=True)
                 raise ValueError("empty content")
+            if finish == "length":
+                current_max = min(int(current_max * 1.5), 32000)
+                print(
+                    f"[deepseek] attempt {attempt}: JSON truncated (finish=length) — "
+                    f"escalating max_tokens to {current_max}",
+                    flush=True,
+                )
+                raise ValueError("truncated JSON (length)")
             return _extract_json(content)
         except json.JSONDecodeError as e:
             last_err = e
@@ -257,11 +270,11 @@ async def enhance_script(user_script: str, duration_minutes: int,
         "Produce the enhanced script + scene plan JSON now."
     )
     data = _call(
-        model=DEEPSEEK_MODEL_CHAT,
+        model=DEEPSEEK_MODEL_REASONING,
         system=system,
         user=user,
-        max_tokens=8000,
-        temperature=0.5,
+        max_tokens=16000,
+        temperature=0.6,
     )
     return await _normalize_script_durations(data, target)
 
@@ -400,11 +413,11 @@ async def write_script(research_brief: dict, duration_minutes: int, niche: str,
         return data
 
     result = _call(
-        model=DEEPSEEK_MODEL_CHAT,
+        model=DEEPSEEK_MODEL_REASONING,
         system=system,
         user=user,
-        max_tokens=12000,
-        temperature=0.7,
+        max_tokens=16000,
+        temperature=0.6,
     )
     result = _finalize(result)
     result = await _normalize_script_durations(result, target)
@@ -418,11 +431,11 @@ async def write_script(research_brief: dict, duration_minutes: int, niche: str,
             f"with deeper research, stories, and detail. Keep the same JSON structure."
         )
         result = _call(
-            model=DEEPSEEK_MODEL_CHAT,
+            model=DEEPSEEK_MODEL_REASONING,
             system=system,
             user=nudge,
-            max_tokens=16000,
-            temperature=0.7,
+            max_tokens=20000,
+            temperature=0.6,
         )
         result = _finalize(result)
         result = await _normalize_script_durations(result, target)
@@ -556,9 +569,9 @@ async def plan_scenes(script: dict, system_prompt_override: str | None = None) -
         "Produce the scene_plan JSON now."
     )
     return _call(
-        model=DEEPSEEK_MODEL_CHAT,
+        model=DEEPSEEK_MODEL_REASONING,
         system=system,
         user=user,
-        max_tokens=8000,
-        temperature=0.5,
+        max_tokens=16000,
+        temperature=0.6,
     )
