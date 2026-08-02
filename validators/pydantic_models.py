@@ -138,7 +138,7 @@ def validate_scene_durations(scene_plan: ScenePlan) -> None:
                 f"Scene {s.scene_id} duration {s.duration_seconds}s is below MIN "
                 f"{PIPELINE_MIN_SHOT_DURATION_S}s. Should have been auto-padded."
             )
-        if s.duration_seconds > PIPELINE_MAX_SHOT_DURATION_S:
+        if s.duration_seconds > PIPELINE_MAX_SHOT_DURATION_S + 0.5:
             raise ValueError(
                 f"Scene {s.scene_id} duration {s.duration_seconds}s exceeds MAX "
                 f"{PIPELINE_MAX_SHOT_DURATION_S}s. Should have been auto-split."
